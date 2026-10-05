@@ -1,0 +1,1094 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Мастерская ПК</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: workbench — parts tray | 3D stage on an anti-static mat | reference card.
+   One dark look on purpose: the 3D scene is lit for a dark room. */
+:root{
+  --bg:#0e1317; --panel:#151c22; --panel-2:#1b242c; --line:#27323c; --line-2:#36434e;
+  --fg:#e4e9ec; --fg-2:#c3ccd3; --muted:#8a97a2;
+  --copper:#e0975a; --copper-ink:#1d130a; --copper-soft:rgba(224,151,90,.14);
+  --ok:#5ccf98; --bad:#ff7b6e;
+  --display:"Unbounded","Segoe UI",system-ui,sans-serif;
+  --body:"Golos Text","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 var(--body);overflow:hidden}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit}
+
+.app{height:100%;display:grid;grid-template-columns:minmax(250px,290px) minmax(0,1fr) minmax(280px,340px);
+  grid-template-rows:auto minmax(0,1fr);gap:14px;padding:0 16px 16px}
+
+.top{grid-column:1/-1;display:flex;align-items:center;gap:14px 28px;flex-wrap:wrap;padding-block:14px;border-bottom:1px solid var(--line)}
+.brand{display:flex;gap:12px;align-items:center}
+.brand svg{flex:none}
+.brand h1{font:700 19px/1.1 var(--display);margin:0;letter-spacing:.01em}
+.brand p{margin:3px 0 0;color:var(--muted);font-size:13px}
+.progress{display:flex;align-items:center;gap:12px;margin-left:auto}
+.segs{display:flex;gap:4px}
+.seg{width:34px;height:6px;border-radius:3px;background:var(--line);transition:background .3s}
+.seg.done{background:var(--copper)}
+#progText{font:500 12.5px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.actions{display:flex;gap:8px}
+.btn{font:600 14px var(--body);border-radius:10px;padding:9px 14px;border:1px solid var(--line-2);background:var(--panel-2);
+  color:var(--fg);cursor:pointer;display:inline-flex;gap:8px;align-items:center;justify-content:center;transition:background .2s,border-color .2s,transform .1s}
+.btn:hover{border-color:#4a5a67}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible,.card:focus-visible,.tag:focus-visible,.chip-btn:focus-visible,.link:focus-visible{outline:2px solid var(--copper);outline-offset:2px}
+.btn-power{background:var(--copper);color:var(--copper-ink);border-color:transparent}
+.btn-power:hover{background:#eaa66d;border-color:transparent}
+.btn-power.on{background:var(--ok);color:#06180f}
+.btn-power.ready{animation:ready 1.6s ease-in-out infinite}
+@keyframes ready{50%{box-shadow:0 0 0 6px rgba(224,151,90,.18)}}
+.btn[disabled]{opacity:.55;cursor:default}
+
+.tray,.info{min-height:0;overflow:auto;padding-block:4px;scrollbar-width:thin}
+.eyebrow{font:600 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:6px 0 8px}
+.hint{color:var(--muted);font-size:13.5px;margin:0 0 14px;max-width:46ch}
+.cards{display:grid;gap:10px}
+.card{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:center;padding:8px;border-radius:12px;
+  background:var(--panel);border:1px solid var(--line);cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;
+  text-align:left;width:100%;transition:border-color .2s,opacity .2s,background .2s}
+.card:hover{background:var(--panel-2)}
+.card img{width:96px;height:68px;object-fit:contain;border-radius:8px;pointer-events:none;-webkit-user-drag:none;
+  background:radial-gradient(circle at 50% 60%,#24313b,#141b21 75%)}
+.card .meta{display:grid;gap:1px;min-width:0}
+.card .step{font:500 11px var(--mono);color:var(--muted);letter-spacing:.06em}
+.card .name{font:600 15px/1.25 var(--body)}
+.card .line{font-size:12.5px;color:var(--muted)}
+.card .state{justify-self:start;margin-top:5px;font:500 11px var(--mono);padding:2px 7px;border-radius:999px;background:var(--copper-soft);color:var(--copper)}
+.card.selected{border-color:var(--copper)}
+.card.installed{cursor:pointer}
+.card.installed img{opacity:.5}
+.card.installed .state{background:rgba(92,207,152,.13);color:var(--ok)}
+.card.dragging{opacity:.4}
+body.dragging,body.dragging *{cursor:grabbing!important}
+
+.stage{position:relative;min-height:0;border-radius:16px;overflow:hidden;background:#11181d;border:1px solid var(--line)}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.stage canvas.hot{cursor:pointer}
+.toast{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:max-content;max-width:min(560px,calc(100% - 28px));
+  padding:11px 16px 11px 14px;border-radius:12px;background:rgba(17,24,29,.94);border:1px solid var(--line-2);
+  font-size:14px;line-height:1.45;display:flex;gap:10px;align-items:flex-start;box-shadow:0 10px 30px rgba(0,0,0,.35);z-index:3}
+.toast::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;margin-top:6px;background:var(--copper)}
+.toast.ok{border-color:rgba(92,207,152,.45)} .toast.ok::before{background:var(--ok)}
+.toast.bad{border-color:rgba(255,123,110,.5)} .toast.bad::before{background:var(--bad)}
+.tip{position:absolute;pointer-events:none;padding:5px 9px;border-radius:7px;background:rgba(14,19,23,.92);border:1px solid var(--line-2);
+  font:500 12.5px var(--body);transform:translate(14px,14px);white-space:nowrap;z-index:2}
+.stage-foot{position:absolute;left:12px;right:12px;bottom:10px;display:flex;justify-content:space-between;align-items:flex-end;gap:10px;
+  color:var(--muted);font-size:12px;pointer-events:none}
+.stage-foot span{background:rgba(14,19,23,.7);padding:4px 8px;border-radius:6px}
+.chip-btn{pointer-events:auto;font:500 12px var(--body);padding:6px 10px;border-radius:8px;border:1px solid var(--line-2);background:rgba(21,28,34,.9);cursor:pointer}
+.chip-btn:hover{border-color:#4a5a67}
+.loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font:500 13px var(--mono);text-align:center;padding:16px}
+
+.info{padding-right:4px}
+.info .kind{font:600 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:6px 0 4px}
+.info h2{font:700 20px/1.25 var(--display);margin:0 0 10px;text-wrap:balance}
+.info p{margin:0 0 12px;color:var(--fg-2);max-width:60ch}
+.info h3{font:600 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--copper);margin:18px 0 6px}
+.status{display:inline-block;font:500 11.5px var(--mono);padding:3px 8px;border-radius:999px;margin-bottom:12px;background:var(--copper-soft);color:var(--copper)}
+.status.ok{background:rgba(92,207,152,.13);color:var(--ok)}
+.specs{display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px 14px;font:13px/1.4 var(--mono);margin:0;padding:12px;border-radius:10px;background:var(--panel);border:1px solid var(--line)}
+.specs dt{color:var(--muted)} .specs dd{margin:0;font-variant-numeric:tabular-nums}
+.info .btn{width:100%;margin-top:16px}
+.legend{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font:500 12.5px var(--body);padding:5px 10px;border-radius:999px;border:1px solid var(--line-2);background:var(--panel);cursor:pointer}
+.tag:hover{border-color:var(--copper);color:var(--copper)}
+.link{background:none;border:0;padding:0;color:var(--muted);font:500 13px var(--body);cursor:pointer;margin:4px 0 2px}
+.link:hover{color:var(--fg)}
+
+@media (max-width: 980px){
+  html,body{height:auto}
+  body{overflow:auto}
+  .app{height:auto;grid-template-columns:minmax(0,1fr);grid-template-rows:none}
+  .top{order:0}
+  .stage{order:1;height:62svh;min-height:340px}
+  .tray{order:2;overflow:visible}
+  .info{order:3;overflow:visible;padding-bottom:24px}
+  .progress{margin-left:0}
+  .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .card{grid-template-columns:minmax(0,1fr)}
+  .card img{width:100%;height:84px}
+  .stage-foot span{display:none}
+}
+@media (prefers-reduced-motion: reduce){
+  .btn-power.ready{animation:none}
+  .seg,.card,.btn{transition:none}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">
+        <rect x="8" y="8" width="20" height="20" rx="3" fill="none" stroke="#e0975a" stroke-width="2"/>
+        <rect x="13" y="13" width="10" height="10" rx="1.5" fill="#e0975a"/>
+        <path d="M13 3v5M18 3v5M23 3v5M13 28v5M18 28v5M23 28v5M3 13h5M3 18h5M3 23h5M28 13h5M28 18h5M28 23h5" stroke="#8a97a2" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <h1>Мастерская ПК</h1>
+        <p>Урок 1 · Собираем системный блок</p>
+      </div>
+    </div>
+    <div class="progress" aria-label="Прогресс сборки">
+      <div class="segs" id="segs"></div>
+      <span id="progText">0 из 4 установлено</span>
+    </div>
+    <div class="actions">
+      <button id="powerBtn" class="btn btn-power" type="button">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4.4 3.6a5.5 5.5 0 1 0 7.2 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span id="powerLabel">Включить</span>
+      </button>
+      <button id="resetBtn" class="btn" type="button">Начать заново</button>
+    </div>
+  </header>
+
+  <aside class="tray">
+    <h2 class="eyebrow">Комплектующие</h2>
+    <p class="hint">Перетащите деталь на материнскую плату. Нажмите на карточку, чтобы прочитать о детали: нужный слот на плате начнёт мигать.</p>
+    <div id="cards" class="cards"></div>
+  </aside>
+
+  <main class="stage" id="stage">
+    <div id="loading" class="loading">Загружаем 3D-сцену…</div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <div id="tip" class="tip" hidden></div>
+    <div class="stage-foot">
+      <span>Вращать — тянуть по пустому месту · Масштаб — колесо мыши · Нажмите на деталь платы, чтобы узнать, что это</span>
+      <button id="viewBtn" class="chip-btn" type="button">Сбросить вид</button>
+    </div>
+  </main>
+
+  <aside class="info" id="info" aria-live="polite"></aside>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const $ = s => document.querySelector(s);
+const V3 = THREE.Vector3;
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const COPPER = new THREE.Color(0xe0975a), GREEN = new THREE.Color(0x5ccf98), RED = new THREE.Color(0xff5a4a);
+
+/* ================= Учебные тексты ================= */
+const COMP = {
+  cpu: {
+    name: 'Процессор', line: 'CPU · центральный процессор', kind: 'Шаг 1 · CPU',
+    desc: 'Главная микросхема компьютера: выполняет команды программ и управляет остальными компонентами. Внутри — вычислительные ядра, кэш-память и контроллер памяти.',
+    where: 'В сокет — квадратный разъём в центре платы. Сокет и процессор должны быть одного типа: в LGA1700 встают только процессоры LGA1700.',
+    tip: 'Золотой треугольник в углу процессора совмещают с треугольником на плате. Процессор кладут сверху без нажима: контакты-ножки находятся в сокете и гнутся от малейшего усилия.',
+    whereShort: 'процессор ставится в сокет, квадратный разъём в центре платы',
+    done: 'Процессор в сокете: треугольники совпали, рамка прижата рычагом.',
+    specs: [['Сокет','LGA1700'],['Ядра / потоки','8 / 16'],['Частота','3,4–5,0 ГГц'],['Тепловыделение','65 Вт'],['Встроенная графика','нет']],
+    lift: 2.4,
+  },
+  cooler: {
+    name: 'Кулер', line: 'Охлаждение процессора', kind: 'Шаг 2 · Охлаждение',
+    desc: 'Отводит тепло от процессора. Медное основание забирает тепло, тепловые трубки переносят его в алюминиевые рёбра, а вентилятор продувает рёбра воздухом.',
+    where: 'Поверх процессора, на крепление вокруг сокета. Поэтому кулер ставят только после процессора. Кабель вентилятора подключают к разъёму CPU_FAN.',
+    tip: 'Перед установкой на процессор наносят термопасту — каплю размером с горошину. Она заполняет микронеровности между металлом. Вентилятор направляют так, чтобы воздух шёл к задней стенке корпуса.',
+    whereShort: 'кулер ставится поверх процессора, в центре платы',
+    done: 'Кулер на месте: термопаста нанесена, вентилятор дует к задней стенке корпуса.',
+    specs: [['Тип','башенный'],['Тепловые трубки','4 × 6 мм'],['Вентилятор','120 мм, до 1800 об/мин'],['Отводит','до 180 Вт']],
+    lift: 2.6,
+  },
+  ram: {
+    name: 'Оперативная память', line: 'ОЗУ · модуль DDR5', kind: 'Шаг 3 · ОЗУ',
+    desc: 'Быстрая временная память для того, с чем процессор работает прямо сейчас: открытых программ, вкладок, игры. При выключении компьютера всё содержимое стирается.',
+    where: 'В слот DIMM справа от сокета. Если модуль один, его ставят во второй слот от процессора — A2.',
+    tip: 'На контактах модуля есть вырез-ключ, а в слоте — выступ. Если они не совпадают, модуль развёрнут или это другой тип памяти: DDR4 не встанет в слот DDR5. Защёлки по краям слота щёлкают, когда модуль вошёл до конца.',
+    whereShort: 'память ставится в длинные узкие слоты DIMM справа от сокета',
+    done: 'Модуль памяти защёлкнулся в слоте',
+    specs: [['Тип','DDR5'],['Объём','16 ГБ'],['Скорость','5600 МТ/с'],['Напряжение','1,1 В']],
+    lift: 2.6,
+  },
+  gpu: {
+    name: 'Видеокарта', line: 'GPU · графический ускоритель', kind: 'Шаг 4 · GPU',
+    desc: 'Строит изображение для монитора. В ней тысячи небольших вычислительных ядер и собственная видеопамять, поэтому она быстро считает 3D-графику, видео и нейросети.',
+    where: 'В верхний слот PCIe x16 с металлической оплёткой. Он ближе всего к процессору и работает на полной скорости.',
+    tip: 'Перед установкой снимают заглушки на задней стенке корпуса. Карту вставляют до щелчка защёлки и прикручивают кронштейн к корпусу. Мощной карте нужен отдельный кабель питания 8-pin от блока питания.',
+    whereShort: 'видеокарта ставится в длинный слот PCIe x16 с металлической оплёткой',
+    done: 'Видеокарта вошла в слот до щелчка защёлки.',
+    specs: [['Интерфейс','PCIe 4.0 x16'],['Видеопамять','8 ГБ GDDR6'],['Выходы','3 × DisplayPort, 1 × HDMI'],['Потребление','170 Вт'],['Доп. питание','8-pin']],
+    lift: 2.6,
+  },
+};
+const ORDER = ['cpu','cooler','ram','gpu'];
+
+const PARTS = {
+  socket:  { kind:'Разъём процессора', name:'Сокет LGA1700', desc:'Сюда устанавливают процессор. В сокете 1700 подпружиненных контактов: они касаются площадок на нижней стороне процессора. Металлическая рамка с рычагом прижимает процессор к контактам.', tip:'Контакты сокета очень хрупкие. Пока процессора нет, сокет закрыт пластиковой заглушкой — её снимают только перед установкой.' },
+  dimm:    { kind:'Слоты оперативной памяти', name:'Слоты DIMM', desc:'Четыре слота для модулей памяти DDR5 с подписями A1, A2, B1, B2. Буква — канал памяти, цифра — номер слота в канале.', tip:'Два модуля ставят в A2 и B2. Так память работает в двухканальном режиме и передаёт данные процессору вдвое быстрее.' },
+  pcie16_1:{ kind:'Слот расширения', name:'PCIe x16 — основной', desc:'Самый быстрый слот платы: 16 линий PCI Express идут напрямую к процессору. Он предназначен для видеокарты.', tip:'Металлическая оплётка укрепляет слот, чтобы тяжёлая видеокарта его не выломала.' },
+  pcie1:   { kind:'Слот расширения', name:'PCIe x1', desc:'Короткий слот на одну линию PCI Express. Для небольших плат: Wi-Fi адаптера, звуковой карты, дополнительных USB-портов.' },
+  pcie16_2:{ kind:'Слот расширения', name:'PCIe x16 — второй', desc:'Выглядит как основной, но подключён к чипсету и работает в режиме x4. Подходит для карты видеозахвата или переходника под накопитель.' },
+  vrm:     { kind:'Питание процессора', name:'VRM и радиаторы', desc:'Цепи питания процессора. Они превращают 12 В от блока питания примерно в 1,2 В, которые нужны процессору. Транзисторы под радиаторами сильно греются под нагрузкой.', tip:'Цилиндры вокруг сокета — твердотельные конденсаторы: они сглаживают скачки напряжения.' },
+  chipset: { kind:'Микросхема платы', name:'Чипсет B760', desc:'Помощник процессора. Через него подключены USB-порты, SATA, сеть, звук и второй слот PCIe.' },
+  io:      { kind:'Задняя панель', name:'Разъёмы I/O', desc:'Разъёмы, которые видны на задней стенке корпуса: USB, сетевой порт, аудио. Пластиковый кожух закрывает их электронику.' },
+  atx24:   { kind:'Питание платы', name:'ATX 24-pin', desc:'Главный разъём питания платы. Сюда подключают самый широкий кабель от блока питания.' },
+  eps:     { kind:'Питание процессора', name:'CPU 8-pin (EPS)', desc:'Отдельный разъём питания процессора в верхнем углу платы. Без этого кабеля компьютер не запустится.' },
+  m2:      { kind:'Накопитель', name:'Слот M.2 под радиатором', desc:'Слот для быстрого SSD-накопителя размером с пластинку жвачки. Радиатор сверху не даёт накопителю перегреваться.' },
+  sata:    { kind:'Накопители', name:'Порты SATA', desc:'Разъёмы для жёстких дисков, SATA-SSD и приводов. Они медленнее M.2, но подходят для больших архивов.' },
+  battery: { kind:'Память настроек', name:'Батарейка CMOS', desc:'Батарейка CR2032 питает часы и хранит настройки BIOS, пока компьютер отключён от розетки.', tip:'Если после отключения от сети на компьютере сбивается время, батарейку пора менять.' },
+  qled:    { kind:'Диагностика', name:'Индикаторы Q-LED', desc:'Четыре светодиода: CPU, DRAM, VGA и BOOT. При включении плата по очереди проверяет компоненты. Если проверка остановилась, горит индикатор того, что не прошло.', tip:'Нажмите «Включить» до конца сборки — увидите, какой индикатор загорится.' },
+};
+
+const BOARD = {
+  kind:'Основа системы', name:'Материнская плата',
+  desc:'Большая печатная плата, к которой подключаются все компоненты. По медным дорожкам между ними идут данные и питание. Эта плата формата ATX: 30,5 × 24,4 см.',
+  specs:[['Формат','ATX'],['Сокет','LGA1700'],['Чипсет','B760'],['Память','4 × DDR5 DIMM'],['Слоты','2 × PCIe x16, 1 × PCIe x1'],['Накопители','M.2, 4 × SATA']],
+};
+
+/* ================= Рендер ================= */
+const stage = $('#stage');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+} catch (err) {
+  $('#loading').textContent = 'Браузер не смог запустить 3D (WebGL). Попробуйте Chrome, Edge или Firefox последней версии.';
+  throw err;
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+stage.prepend(renderer.domElement);
+const canvas = renderer.domElement;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x11181d);
+scene.fog = new THREE.Fog(0x11181d, 85, 170);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(36, 1, 0.5, 400);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.minDistance = 14;
+controls.maxDistance = 120;
+controls.maxPolarAngle = Math.PI * 0.47;
+controls.target.set(0, 1.5, 0.5);
+const VIEW_DIR = new V3(0.16, 1.2, 0.95).normalize();
+
+scene.add(new THREE.HemisphereLight(0xc8dceb, 0x0e1317, 0.45));
+const key = new THREE.DirectionalLight(0xfff3e6, 2.4);
+key.position.set(-18, 42, 22);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 120 });
+key.shadow.bias = -0.0004; key.shadow.normalBias = 0.02;
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x8fb8ff, 0.7);
+rim.position.set(25, 18, -30);
+scene.add(rim);
+
+/* ---------- помощники ---------- */
+const mat = o => new THREE.MeshStandardMaterial(o);
+const MAT = {
+  black:   mat({ color: 0x15191d, roughness: .55 }),
+  plastic: mat({ color: 0x2a3138, roughness: .5 }),
+  latch:   mat({ color: 0x8a96a0, roughness: .45 }),
+  steel:   mat({ color: 0xaeb7bf, roughness: .3, metalness: 1 }),
+  gun:     mat({ color: 0x4a535b, roughness: .38, metalness: .85 }),
+  dark:    mat({ color: 0x30373e, roughness: .42, metalness: .8 }),
+  alu:     mat({ color: 0xd0d6db, roughness: .36, metalness: 1 }),
+  gold:    mat({ color: 0xe2ad55, roughness: .26, metalness: 1 }),
+  copper:  mat({ color: 0xd07a45, roughness: .3, metalness: 1 }),
+  brass:   mat({ color: 0xc9a35a, roughness: .35, metalness: 1 }),
+  pcbG:    mat({ color: 0x1f5a3b, roughness: .6 }),
+  pcbK:    mat({ color: 0x161c21, roughness: .6 }),
+  blade:   mat({ color: 0x2c343b, roughness: .55 }),
+  rgb:     mat({ color: 0xd9e0e5, roughness: .3, emissive: 0x000000 }),
+};
+function box(w, h, d, m, x = 0, y = 0, z = 0, parent) {
+  const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+  o.position.set(x, y, z); o.castShadow = o.receiveShadow = true;
+  if (parent) parent.add(o);
+  return o;
+}
+function cyl(r, h, m, x, y, z, parent, seg = 24) {
+  const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, seg), m);
+  o.position.set(x, y, z); o.castShadow = o.receiveShadow = true;
+  if (parent) parent.add(o);
+  return o;
+}
+function canvasTex(w, h, draw) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+}
+function rng(seed) { return () => { seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const MONO = '"JetBrains Mono", Consolas, monospace';
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const easeOut = k => 1 - Math.pow(1 - k, 3);
+const easeInOut = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+
+try { await Promise.race([Promise.all([document.fonts.load(`600 20px ${MONO}`), document.fonts.load('700 20px Unbounded')]), sleep(1500)]); } catch (e) {}
+
+/* ================= Стол и материнская плата ================= */
+// Единицы — сантиметры. Плата лежит в плоскости XZ, верх платы — y = 0.
+// Левый край (x = −12.2) — задняя панель с разъёмами, верх (z = −15.25) — сторона процессора.
+const S = { x: -1.5, z: -7 };                       // центр сокета
+const DIMM_X = [5.2, 6.0, 6.8, 7.6], DIMM_Z = -7, DIMM_L = 14.2;
+const HOLES = [[3.6,-14.5],[11.3,-14.5],[-11.3,0.8],[3.6,1.6],[11.3,1.6],[-11.3,14.4],[3.6,14.4],[11.3,14.4]];
+
+const matTex = canvasTex(512, 512, (c, W, H) => {
+  c.fillStyle = '#1b262e'; c.fillRect(0, 0, W, H);
+  c.strokeStyle = 'rgba(255,255,255,.045)'; c.lineWidth = 1;
+  for (let i = 0; i <= 8; i++) { c.beginPath(); c.moveTo(i * 64, 0); c.lineTo(i * 64, H); c.moveTo(0, i * 64); c.lineTo(W, i * 64); c.stroke(); }
+  c.strokeStyle = 'rgba(255,255,255,.08)'; c.lineWidth = 2;
+  c.strokeRect(1, 1, W - 2, H - 2);
+  c.fillStyle = 'rgba(224,151,90,.22)'; c.font = `600 16px ${MONO}`; c.fillText('ESD SAFE AREA', 12, 26);
+});
+matTex.wrapS = matTex.wrapT = THREE.RepeatWrapping; matTex.repeat.set(9, 9);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(180, 180), mat({ map: matTex, roughness: .92 }));
+ground.rotation.x = -Math.PI / 2; ground.position.y = -0.98; ground.receiveShadow = true;
+scene.add(ground);
+
+function drawBoard(c, W, H) {
+  const k = W / 24.4, X = x => (x + 12.2) * k, Z = z => (z + 15.25) * k, r = rng(11);
+  c.fillStyle = '#192026'; c.fillRect(0, 0, W, H);
+  const vg = c.createRadialGradient(W * .45, H * .4, 50, W / 2, H / 2, W * .9);
+  vg.addColorStop(0, 'rgba(120,150,170,.07)'); vg.addColorStop(1, 'rgba(0,0,0,.3)');
+  c.fillStyle = vg; c.fillRect(0, 0, W, H);
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  for (let i = 0; i < 230; i++) {
+    let x = r() * W, y = r() * H, dir = (r() * 4 | 0) * 2;
+    c.beginPath(); c.moveTo(x, y);
+    const n = 2 + (r() * 3 | 0);
+    for (let s = 0; s < n; s++) {
+      const a = dir * Math.PI / 4, len = 24 + r() * 150;
+      x += Math.cos(a) * len; y += Math.sin(a) * len; c.lineTo(x, y);
+      dir = (dir + (r() < .5 ? 1 : 7)) % 8;
+    }
+    const hot = r() < .12;
+    c.strokeStyle = hot ? 'rgba(224,151,90,.2)' : 'rgba(150,175,190,.09)'; c.lineWidth = hot ? 3 : 2; c.stroke();
+    c.fillStyle = 'rgba(214,176,112,.5)'; c.beginPath(); c.arc(x, y, 3, 0, Math.PI * 2); c.fill();
+  }
+  // шина памяти: сокет → слоты DIMM
+  c.strokeStyle = 'rgba(224,151,90,.24)'; c.lineWidth = 2;
+  for (let i = 0; i < 22; i++) { const z = -11.6 + i * .42; c.beginPath(); c.moveTo(X(1.3), Z(z)); c.lineTo(X(2.6), Z(z)); c.lineTo(X(3.0), Z(z + .3)); c.lineTo(X(4.85), Z(z + .3)); c.stroke(); }
+  // линии PCIe: сокет → основной слот x16
+  for (let i = 0; i < 12; i++) { const x = -4.6 + i * .36; c.beginPath(); c.moveTo(X(x), Z(-3.9)); c.lineTo(X(x), Z(-1.4)); c.lineTo(X(x - 1.2), Z(-0.2)); c.lineTo(X(x - 1.2), Z(3.1)); c.stroke(); }
+  // шелкография
+  const ink = 'rgba(226,231,235,.85)';
+  c.fillStyle = ink; c.strokeStyle = 'rgba(226,231,235,.5)'; c.lineWidth = 2;
+  const t = (s, x, z, size = 17, align = 'left', rot = 0) => { c.save(); c.translate(X(x), Z(z)); c.rotate(rot); c.font = `600 ${size}px ${MONO}`; c.textAlign = align; c.textBaseline = 'middle'; c.fillStyle = ink; c.fillText(s, 0, 0); c.restore(); };
+  const rect = (x1, z1, x2, z2) => c.strokeRect(X(x1), Z(z1), X(x2) - X(x1), Z(z2) - Z(z1));
+  rect(-4.5, -10.3, 1.5, -3.7);
+  c.beginPath(); c.moveTo(X(-4.5), Z(-3.45)); c.lineTo(X(-3.9), Z(-3.45)); c.lineTo(X(-4.5), Z(-2.85)); c.closePath(); c.fill();
+  t('CPU_1  LGA1700', -3.7, -3.2, 16);
+  DIMM_X.forEach((x, i) => t(['A1','A2','B1','B2'][i], x, 0.8, 15, 'center'));
+  t('DDR5_DIMM', 8.55, -7, 16, 'center', -Math.PI / 2);
+  t('PCIEX16_1', -10.1, 2.75); t('PCIEX1_1', -10.1, 6.35); t('PCIEX16_2', -10.1, 10.55);
+  t('M.2_1  SOCKET 3', -9.4, -0.95, 15);
+  t('ATX_24P', 10.2, -3, 16, 'center', -Math.PI / 2);
+  t('CPU_PWR', -9.4, -13.2, 15);
+  t('CPU_FAN', 2.3, -12.0, 13, 'center');
+  t('BAT1', 0.5, 9.45, 14, 'center');
+  t('SATA6G', 10.25, 8, 15, 'center', -Math.PI / 2);
+  ['CPU','DRAM','VGA','BOOT'].forEach((s, i) => t(s, 10.7, -11 + i * .75, 13));
+  t('WORKSHOP B760-EDU', -0.6, 13.2, 24);
+  t('REV 1.02  ·  ATX 305×244 mm', -0.6, 14.0, 14);
+  for (const [hx, hz] of HOLES) {
+    c.fillStyle = '#8a939a'; c.beginPath(); c.arc(X(hx), Z(hz), .5 * k, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#0b0f12'; c.beginPath(); c.arc(X(hx), Z(hz), .22 * k, 0, Math.PI * 2); c.fill();
+  }
+}
+
+const board = new THREE.Group(); scene.add(board);
+const edgeMat = mat({ color: 0x141a1f, roughness: .7 });
+const topMat = mat({ map: canvasTex(1024, 1280, drawBoard), roughness: .62, metalness: .12 });
+const pcb = new THREE.Mesh(new THREE.BoxGeometry(24.4, 0.16, 30.5), [edgeMat, edgeMat, topMat, edgeMat, edgeMat, edgeMat]);
+pcb.position.y = -0.08; pcb.castShadow = pcb.receiveShadow = true;
+board.add(pcb);
+for (const [hx, hz] of HOLES) {
+  cyl(.3, .82, MAT.brass, hx, -0.57, hz, board, 6);
+  cyl(.34, .1, MAT.steel, hx, .05, hz, board, 16);
+}
+
+const pickParts = [];
+function part(id) { const g = new THREE.Group(); g.userData.part = id; board.add(g); pickParts.push(g); return g; }
+
+// сокет
+{
+  const g = part('socket');
+  box(5.4, .3, 6.0, MAT.black, S.x, .15, S.z, g);
+  const pinTex = canvasTex(256, 320, (c, w, h) => {
+    c.fillStyle = '#2a2219'; c.fillRect(0, 0, w, h); c.fillStyle = '#d9a957';
+    for (let y = 6; y < h - 3; y += 7) for (let x = 6; x < w - 3; x += 7) {
+      if (x > w * .36 && x < w * .64 && y > h * .38 && y < h * .62) continue;
+      c.fillRect(x, y, 2.4, 2.4);
+    }
+  });
+  const pins = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 4.3), mat({ map: pinTex, metalness: .6, roughness: .4 }));
+  pins.rotation.x = -Math.PI / 2; pins.position.set(S.x, .302, S.z); pins.receiveShadow = true; g.add(pins);
+  box(.3, .08, 5.2, MAT.steel, S.x - 2.15, .34, S.z, g);
+  box(.3, .08, 5.2, MAT.steel, S.x + 2.15, .34, S.z, g);
+  box(4.6, .08, .3, MAT.steel, S.x, .34, S.z - 2.45, g);
+  box(4.6, .08, .3, MAT.steel, S.x, .34, S.z + 2.45, g);
+  const lever = cyl(.07, 5.6, MAT.steel, S.x + 2.62, .42, S.z, g, 10); lever.rotation.x = Math.PI / 2;
+  box(.5, .1, .16, MAT.steel, S.x + 2.4, .42, S.z + 2.8, g);
+}
+// слоты DIMM
+{
+  const g = part('dimm');
+  DIMM_X.forEach((x, i) => {
+    box(.62, .72, DIMM_L, i % 2 ? MAT.plastic : MAT.black, x, .36, DIMM_Z, g);
+    box(.2, .02, DIMM_L - 1.2, MAT.black, x, .725, DIMM_Z, g);
+    box(.22, .06, .18, MAT.latch, x, .7, DIMM_Z + .5, g);
+    box(.7, .95, .55, MAT.latch, x, .48, DIMM_Z - DIMM_L / 2 - .2, g);
+    box(.7, .95, .55, MAT.latch, x, .48, DIMM_Z + DIMM_L / 2 + .2, g);
+  });
+}
+// слоты PCIe
+function pcieSlot(id, xc, z, len, armored) {
+  const g = part(id);
+  box(len, .95, .72, MAT.black, xc, .475, z, g);
+  box(len - .3, .015, .2, mat({ color: 0x07090b, roughness: .8 }), xc, .955, z, g);
+  if (armored) box(len + .15, .72, .8, MAT.steel, xc, .36, z, g);
+  box(.55, 1.1, .75, MAT.latch, xc + len / 2 + .28, .55, z, g);
+}
+pcieSlot('pcie16_1', -5.75, 3.6, 8.9, true);
+pcieSlot('pcie1', -8.95, 7.2, 2.5, false);
+pcieSlot('pcie16_2', -5.75, 11.4, 8.9, false);
+// радиаторы VRM и конденсаторы
+function finBlock(g, x, z, w, d, h, along) {
+  box(w, h * .32, d, MAT.gun, x, h * .16, z, g);
+  const n = Math.floor((along === 'z' ? d : w) / .42);
+  for (let i = 0; i < n; i++) {
+    const f = (i + .5) / n - .5;
+    if (along === 'z') box(w, h * .68, .2, MAT.gun, x, h * .66, z + f * d, g);
+    else box(.2, h * .68, d, MAT.gun, x + f * w, h * .66, z, g);
+  }
+}
+{
+  const g = part('vrm');
+  finBlock(g, -7.6, -7.5, 2.2, 8.5, 2.4, 'z');
+  finBlock(g, -2.5, -13.2, 9, 2.0, 2.4, 'x');
+  const capTop = mat({ color: 0xb9c1c8, roughness: .35, metalness: 1 });
+  for (let z = -11; z <= -3.6; z += 1.05) { cyl(.28, .7, MAT.black, -5.4, .35, z, g, 16); cyl(.28, .02, capTop, -5.4, .71, z, g, 16); }
+  for (let x = -4; x <= 1.2; x += 1.05) { cyl(.28, .7, MAT.black, x, .35, -11.2, g, 16); cyl(.28, .02, capTop, x, .71, -11.2, g, 16); }
+}
+// M.2 радиатор
+{
+  const g = part('m2');
+  box(8, .35, 2.2, MAT.dark, -5.5, .2, .6, g);
+  for (let i = 0; i < 6; i++) box(7.6, .12, .14, MAT.alu, -5.5, .43, -.25 + i * .34, g);
+}
+// чипсет
+{
+  const g = part('chipset');
+  const top = canvasTex(256, 256, (c, w, h) => {
+    const gr = c.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#3a434b'); gr.addColorStop(1, '#22292f');
+    c.fillStyle = gr; c.fillRect(0, 0, w, h);
+    c.strokeStyle = 'rgba(224,151,90,.55)'; c.lineWidth = 3;
+    for (let i = -2; i < 6; i++) { c.beginPath(); c.moveTo(i * 60, h); c.lineTo(i * 60 + h, 0); c.stroke(); }
+    c.fillStyle = '#1a1f24'; c.fillRect(40, 96, 176, 64);
+    c.fillStyle = '#d7dde2'; c.font = `600 34px ${MONO}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('B760', 128, 129);
+  });
+  const sideM = MAT.gun, topM = mat({ map: top, metalness: .7, roughness: .4 });
+  const o = new THREE.Mesh(new THREE.BoxGeometry(5, .9, 5), [sideM, sideM, topM, sideM, sideM, sideM]);
+  o.position.set(5.5, .45, 8.5); o.castShadow = o.receiveShadow = true; g.add(o);
+}
+// задняя панель
+{
+  const g = part('io');
+  box(2.6, 3.6, 12, MAT.plastic, -10.8, 1.8, -8.5, g);
+  box(2.62, .12, 11, MAT.copper, -10.8, 3.4, -8.5, g);
+  [[-13.4,.6],[-13.4,1.6],[-11.4,.6],[-11.4,1.6],[-9.3,1.1],[-7.2,.6],[-7.2,1.6],[-5.2,1.1],[-3.6,1.1]].forEach(([z, y]) => box(.5, .55, 1.3, MAT.steel, -12.25, y, z, g));
+}
+// разъёмы питания, SATA, батарейка, вентиляторный разъём
+{
+  const atxTop = canvasTex(64, 256, (c, w, h) => { c.fillStyle = '#16191c'; c.fillRect(0, 0, w, h); c.fillStyle = '#050607'; for (let i = 0; i < 12; i++) for (let j = 0; j < 2; j++) c.fillRect(8 + j * 28, 6 + i * 20.8, 20, 15); });
+  const atxM = mat({ map: atxTop, roughness: .6 });
+  const g1 = part('atx24');
+  const a = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.6, 5.6), [MAT.black, MAT.black, atxM, MAT.black, MAT.black, MAT.black]);
+  a.position.set(11.3, .8, -3); a.castShadow = a.receiveShadow = true; g1.add(a);
+  const g2 = part('eps');
+  box(2.4, 1.4, 1.1, MAT.black, -8.2, .7, -14.4, g2);
+  const g3 = part('sata');
+  [6.5, 7.5, 8.5, 9.5].forEach(z => box(1.3, .9, .8, MAT.black, 11.4, .45, z, g3));
+  const g4 = part('battery');
+  cyl(1.05, .14, MAT.black, .5, .07, 8, g4, 32);
+  cyl(.98, .32, MAT.steel, .5, .2, 8, g4, 32);
+  box(1.0, .6, .25, MAT.black, 2.3, .3, -12.6, board);
+  for (let i = 0; i < 4; i++) box(.06, .5, .06, MAT.gold, 1.95 + i * .23, .5, -12.6, board);
+}
+// индикаторы Q-LED
+const LED = {};
+const LED_COL = { cpu: 0xff3b2f, dram: 0xffc233, vga: 0xf2f6ff, boot: 0x3bff8a };
+{
+  const g = part('qled');
+  ['cpu','dram','vga','boot'].forEach((n, i) => {
+    const m = mat({ color: 0x353c42, roughness: .3, emissive: 0x000000 });
+    const o = box(.42, .24, .3, m, 10.3, .12, -11 + i * .75, g); o.userData.keep = true;
+    const haloM = new THREE.MeshBasicMaterial({ color: LED_COL[n], transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+    const halo = new THREE.Mesh(new THREE.CircleGeometry(.9, 28), haloM);
+    halo.rotation.x = -Math.PI / 2; halo.position.set(10.3, .3, -11 + i * .75); halo.userData.keep = true; halo.raycast = () => {};
+    g.add(halo);
+    LED[n] = { m, haloM, color: LED_COL[n] };
+  });
+}
+// у каждой детали платы свои материалы — для подсветки при наведении
+for (const g of pickParts) g.traverse(o => {
+  if (o.isMesh && !o.userData.keep) o.material = Array.isArray(o.material) ? o.material.map(m => m.clone()) : o.material.clone();
+});
+
+/* ================= Компоненты ================= */
+function roundedSquare(s, r) {
+  const h = s / 2, sh = new THREE.Shape();
+  sh.moveTo(-h + r, -h); sh.lineTo(h - r, -h); sh.quadraticCurveTo(h, -h, h, -h + r);
+  sh.lineTo(h, h - r); sh.quadraticCurveTo(h, h, h - r, h); sh.lineTo(-h + r, h);
+  sh.quadraticCurveTo(-h, h, -h, h - r); sh.lineTo(-h, -h + r); sh.quadraticCurveTo(-h, -h, -h + r, -h);
+  return sh;
+}
+const rotors = [];
+function makeFan(size, n, framed, depth, owner) {
+  const g = new THREE.Group(), R = size * .46;
+  if (framed) {
+    const sh = roundedSquare(size, size * .09), hole = new THREE.Path();
+    hole.absarc(0, 0, R + .1, 0, Math.PI * 2, true); sh.holes.push(hole);
+    const geo = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false, curveSegments: 40 });
+    geo.translate(0, 0, -depth / 2);
+    const fr = new THREE.Mesh(geo, MAT.black); fr.castShadow = fr.receiveShadow = true; g.add(fr);
+  } else {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(R + .12, .14, 10, 56), MAT.dark); g.add(ring);
+  }
+  const rotor = new THREE.Group(); g.add(rotor);
+  const hub = cyl(size * .17, depth * .6, MAT.black, 0, 0, 0, rotor, 32); hub.rotation.x = Math.PI / 2;
+  const sticker = new THREE.Mesh(new THREE.CircleGeometry(size * .12, 32), MAT.copper);
+  sticker.position.z = depth * .3 + .01; rotor.add(sticker);
+  const bl = R - size * .17, bladeGeo = new THREE.BoxGeometry(bl, size * .2, .06);
+  for (let i = 0; i < n; i++) {
+    const p = new THREE.Group(); p.rotation.z = i * Math.PI * 2 / n;
+    const b = new THREE.Mesh(bladeGeo, MAT.blade); b.position.x = size * .17 + bl / 2; b.rotation.x = .55; b.castShadow = true;
+    p.add(b); rotor.add(p);
+  }
+  rotors.push({ rotor, owner });
+  return g;
+}
+
+function buildCPU() {
+  const g = new THREE.Group();
+  box(3.75, .12, 4.5, MAT.pcbG, 0, .06, 0, g);
+  const ihsTex = canvasTex(320, 384, (c, w, h) => {
+    const gr = c.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#d5dbe0'); gr.addColorStop(1, '#a9b1b8');
+    c.fillStyle = gr; c.fillRect(0, 0, w, h);
+    const r = rng(3); c.strokeStyle = 'rgba(255,255,255,.12)';
+    for (let i = 0; i < 160; i++) { const y = r() * h; c.beginPath(); c.moveTo(0, y); c.lineTo(w, y + r() * 4 - 2); c.stroke(); }
+    c.fillStyle = '#4f585f'; c.textBaseline = 'top';
+    c.font = `600 34px ${MONO}`; c.fillText('EDU CORE 8', 26, 120);
+    c.font = `500 22px ${MONO}`; c.fillText('8C/16T · 3.4 GHz', 26, 172); c.fillText('LGA1700 · 65 W', 26, 206); c.fillText('X4F2C0917', 26, 262);
+  });
+  const sm = MAT.steel, top = mat({ map: ihsTex, metalness: .8, roughness: .35 });
+  const ihs = new THREE.Mesh(new THREE.BoxGeometry(3.1, .22, 3.6), [sm, sm, top, sm, sm, sm]);
+  ihs.position.y = .23; ihs.castShadow = ihs.receiveShadow = true; g.add(ihs);
+  const tri = new THREE.Mesh(new THREE.CircleGeometry(.24, 3), MAT.gold);
+  tri.rotation.x = -Math.PI / 2; tri.rotation.z = Math.PI / 4; tri.position.set(-1.6, .125, 1.98); g.add(tri);
+  for (let i = 0; i < 6; i++) box(.18, .06, .1, MAT.dark, -1.2 + i * .48, .15, -2.1, g);
+  return g;
+}
+function buildCooler() {
+  const g = new THREE.Group();
+  box(4, .8, 4, MAT.copper, 0, .4, 0, g);
+  box(7.2, .15, .9, MAT.steel, 0, .85, 0, g);
+  for (const x of [-1.1, 1.1]) for (const z of [-1.4, 1.4]) cyl(.3, 14.8, MAT.copper, x, 7.8, z, g, 16);
+  const fins = new THREE.InstancedMesh(new THREE.BoxGeometry(5, .05, 12), MAT.alu, 36);
+  const m4 = new THREE.Matrix4();
+  for (let i = 0; i < 36; i++) { m4.makeTranslation(0, 3 + i * .34, 0); fins.setMatrixAt(i, m4); }
+  fins.castShadow = fins.receiveShadow = true; g.add(fins);
+  box(5.3, .35, 12.3, MAT.black, 0, 15.2, 0, g);
+  box(5.32, .06, 3, MAT.copper, 0, 15.4, 0, g);
+  const fan = makeFan(12, 7, true, 2.5, 'cooler');
+  fan.rotation.y = Math.PI / 2; fan.position.set(3.8, 9.2, 0); g.add(fan);
+  return g;
+}
+function buildRAM() {
+  const g = new THREE.Group();
+  box(.12, 3.1, 13.3, MAT.pcbG, 0, 1.55, 0, g);
+  box(.14, .34, 6.8, MAT.gold, 0, .17, -3.1, g);
+  box(.14, .34, 5.8, MAT.gold, 0, .17, 3.6, g);
+  const label = canvasTex(1024, 220, (c, w, h) => {
+    c.fillStyle = '#272e34'; c.fillRect(0, 0, w, h);
+    c.fillStyle = '#e0975a'; c.beginPath(); c.moveTo(w * .62, 0); c.lineTo(w * .7, 0); c.lineTo(w * .6, h); c.lineTo(w * .52, h); c.fill();
+    c.fillStyle = '#e4e9ec'; c.font = `600 54px ${MONO}`; c.textBaseline = 'middle'; c.fillText('EDU MEMORY', 50, 80);
+    c.fillStyle = '#9aa6b0'; c.font = `500 34px ${MONO}`; c.fillText('DDR5-5600 · 16 GB · CL36', 50, 150);
+  });
+  const sp = mat({ color: 0x2d353c, metalness: .7, roughness: .45 }), lm = mat({ map: label, metalness: .4, roughness: .5 });
+  const s1 = new THREE.Mesh(new THREE.BoxGeometry(.1, 2.6, 13), [lm, sp, sp, sp, sp, sp]); s1.position.set(.13, 1.75, 0);
+  const s2 = new THREE.Mesh(new THREE.BoxGeometry(.1, 2.6, 13), sp); s2.position.set(-.13, 1.75, 0);
+  for (const s of [s1, s2]) { s.castShadow = s.receiveShadow = true; g.add(s); }
+  box(.34, .28, 12.8, MAT.rgb, 0, 3.2, 0, g);
+  return g;
+}
+function buildGPU() {
+  const g = new THREE.Group();
+  box(24, 11, .16, MAT.pcbK, 5.8, 6.35, 0, g);
+  box(8.9, .85, .18, MAT.gold, 0, .425, 0, g);
+  const front = canvasTex(1024, 494, (c, w, h) => {
+    const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#262e35'); gr.addColorStop(1, '#171c21');
+    c.fillStyle = gr; c.fillRect(0, 0, w, h);
+    c.strokeStyle = 'rgba(224,151,90,.8)'; c.lineWidth = 6;
+    c.beginPath(); c.moveTo(0, h * .12); c.lineTo(w * .4, h * .12); c.lineTo(w * .46, h * .04); c.lineTo(w, h * .04); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.06)'; c.lineWidth = 2;
+    for (let i = 0; i < 14; i++) { c.beginPath(); c.moveTo(w * .5 - 30 + i * 6, h * .2); c.lineTo(w * .5 - 30 + i * 6, h * .85); c.stroke(); }
+    for (const u of [.273, .727]) { c.fillStyle = '#0b0e11'; c.beginPath(); c.arc(u * w, h / 2, 214, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = '#8a97a2'; c.font = `600 22px ${MONO}`; c.textAlign = 'right'; c.fillText('WORKSHOP · 8 GB GDDR6', w - 24, h - 22);
+  });
+  const sh = mat({ color: 0x1b2127, roughness: .45, metalness: .3 }), fm = mat({ map: front, roughness: .45, metalness: .3 });
+  const shroud = new THREE.Mesh(new THREE.BoxGeometry(22, 10.6, 3), [sh, sh, sh, sh, fm, sh]);
+  shroud.position.set(6.6, 6.35, 1.75); shroud.castShadow = shroud.receiveShadow = true; g.add(shroud);
+  for (const x of [1.6, 11.6]) { const f = makeFan(9, 9, false, .6, 'gpu'); f.position.set(x, 6.35, 3.32); g.add(f); }
+  box(23.5, 10.6, .16, MAT.dark, 6, 6.35, -.2, g);
+  box(.1, 13, 4.2, MAT.steel, -6.45, 5.6, 1.6, g);
+  [2.2, 4.0, 5.8, 7.6].forEach(y => box(.2, 1.2, .55, MAT.black, -6.55, y, 1.2, g));
+  box(.2, 1.5, .5, MAT.black, -6.55, 9.6, 1.2, g);
+  box(2.4, 1.0, 1.1, MAT.black, 14, 12.35, .5, g);
+  box(16, .18, .5, MAT.rgb, 6.6, 11.72, 2.6, g);
+  return g;
+}
+
+const SLOTS = [
+  { id:'socket', kind:'socket', name:'сокет процессора', x:S.x, z:S.z, hx:2.4, hz:2.8, gw:5.8, gd:6.4, gh:.8 },
+  ...DIMM_X.map((x, i) => ({ id:'dimm' + i, kind:'dimm', label:['A1','A2','B1','B2'][i], name:`слот памяти DIMM_${['A1','A2','B1','B2'][i]}`, x, z:DIMM_Z, hx:0, hz:7.1, gw:.8, gd:15.2, gh:1.1 })),
+  { id:'pcie16_1', kind:'pcie16', primary:true, name:'основной слот PCIe x16', x:-5.75, z:3.6, hx:4.4, hz:0, gw:9.7, gd:1.1, gh:1.3 },
+  { id:'pcie1', kind:'pcie1', name:'слот PCIe x1', x:-8.95, z:7.2, hx:1.2, hz:0, gw:3.3, gd:1.1, gh:1.3 },
+  { id:'pcie16_2', kind:'pcie16', primary:false, name:'второй слот PCIe x16', x:-5.75, z:11.4, hx:4.4, hz:0, gw:9.7, gd:1.1, gh:1.3 },
+];
+const SLOT = Object.fromEntries(SLOTS.map(s => [s.id, s]));
+const DEFAULT_SLOT = { cpu:'socket', cooler:'socket', ram:'dimm1', gpu:'pcie16_1' };
+const TARGET_Y = { cpu:.3, cooler:.64, ram:.3, gpu:.35 };
+
+const builders = { cpu: buildCPU, cooler: buildCooler, ram: buildRAM, gpu: buildGPU };
+for (const id of ORDER) {
+  const g = builders[id]();
+  g.userData.comp = id; g.visible = false;
+  g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  scene.add(g);
+  Object.assign(COMP[id], { group: g, installed: false, slot: null });
+}
+const target = (id, slot) => new V3(slot.x, TARGET_Y[id], slot.z);
+
+// подсветка слотов
+const glow = {};
+for (const s of SLOTS) {
+  const m = new THREE.MeshBasicMaterial({ color: COPPER, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+  const o = new THREE.Mesh(new THREE.BoxGeometry(s.gw, s.gh, s.gd), m);
+  o.position.set(s.x, s.gh / 2, s.z); o.visible = false; o.raycast = () => {}; o.renderOrder = 2;
+  scene.add(o);
+  glow[s.id] = { o, m, hint: false, hover: null, flashT: -1, flashC: GREEN };
+}
+const ring = new THREE.Mesh(new THREE.RingGeometry(.55, .8, 40), new THREE.MeshBasicMaterial({ color: COPPER, transparent: true, opacity: .85, depthTest: false }));
+ring.rotation.x = -Math.PI / 2; ring.visible = false; ring.renderOrder = 5; scene.add(ring);
+
+/* ================= Миниатюры для карточек ================= */
+function makeThumbs() {
+  const imgs = {};
+  try {
+    const tr = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    tr.setPixelRatio(1); tr.setSize(320, 224);
+    tr.toneMapping = THREE.ACESFilmicToneMapping; tr.outputColorSpace = THREE.SRGBColorSpace;
+    const ts = new THREE.Scene(), pm = new THREE.PMREMGenerator(tr);
+    ts.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    ts.add(new THREE.HemisphereLight(0xffffff, 0x223344, .7));
+    const dl = new THREE.DirectionalLight(0xffffff, 2); dl.position.set(5, 10, 8); ts.add(dl);
+    const cam = new THREE.PerspectiveCamera(28, 320 / 224, .1, 300);
+    const dirs = { cpu: new V3(.5, 1.4, 1), cooler: new V3(1.3, .55, 1), ram: new V3(1, .6, .5), gpu: new V3(.35, .45, 1) };
+    for (const id of ORDER) {
+      const g = COMP[id].group;
+      ts.add(g); g.position.set(0, 0, 0); g.visible = true;
+      const b = new THREE.Box3().setFromObject(g), c = b.getCenter(new V3()), sz = b.getSize(new V3()).length();
+      cam.position.copy(c).addScaledVector(dirs[id].normalize(), sz * 1.35); cam.lookAt(c);
+      tr.render(ts, cam);
+      imgs[id] = tr.domElement.toDataURL('image/png');
+      g.visible = false; scene.add(g);
+    }
+    pm.dispose(); tr.dispose(); tr.forceContextLoss();
+  } catch (e) { console.warn('thumbs', e); }
+  return imgs;
+}
+
+/* ================= Интерфейс ================= */
+const cardsEl = $('#cards'), infoEl = $('#info'), toastEl = $('#toast'), tipEl = $('#tip');
+const thumbs = makeThumbs();
+cardsEl.innerHTML = ORDER.map((id, i) => `
+  <button class="card" type="button" data-id="${id}">
+    <img alt="" draggable="false" src="${thumbs[id] || ''}">
+    <span class="meta">
+      <span class="step">ШАГ ${i + 1}</span>
+      <span class="name">${COMP[id].name}</span>
+      <span class="line">${COMP[id].line}</span>
+      <span class="state">На столе</span>
+    </span>
+  </button>`).join('');
+$('#segs').innerHTML = ORDER.map(id => `<span class="seg" data-id="${id}" title="${COMP[id].name}"></span>`).join('');
+
+let selected = null, hoverPart = null, powered = false, busyPower = false, ledFault = null, spinTarget = 0, fanSpeed = 0;
+let toastTimer;
+function toast(text, kind = 'info', ms = 6500) {
+  toastEl.className = 'toast ' + kind; toastEl.textContent = text; toastEl.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.hidden = true, ms);
+}
+const installedCount = () => ORDER.filter(id => COMP[id].installed).length;
+
+function slotLabel(id) {
+  const s = COMP[id].slot; if (!s) return '';
+  return s.kind === 'dimm' ? `DIMM_${s.label}` : s.kind === 'socket' ? 'сокет' : s.id === 'pcie16_1' ? 'PCIEX16_1' : 'PCIEX16_2';
+}
+function specsHTML(rows) { return `<dl class="specs">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`; }
+function renderInfo() {
+  let h = '';
+  if (!selected) {
+    h = `<div class="kind">${BOARD.kind}</div><h2>${BOARD.name}</h2><p>${BOARD.desc}</p>
+      <h3>Что есть на плате</h3><p>Нажмите на название или на саму деталь в 3D-сцене.</p>
+      <div class="legend">${Object.entries(PARTS).map(([k, p]) => `<button class="tag" type="button" data-part="${k}">${p.name}</button>`).join('')}</div>
+      <h3>Характеристики</h3>${specsHTML(BOARD.specs)}`;
+  } else if (selected.type === 'comp') {
+    const c = COMP[selected.id];
+    const st = c.installed ? `<span class="status ok">Установлено · ${slotLabel(selected.id)}</span>` : `<span class="status">На столе — перетащите на плату</span>`;
+    h = `<button class="link" type="button" data-back>← Вся плата</button>
+      <div class="kind">${c.kind}</div><h2>${c.name}</h2>${st}<p>${c.desc}</p>
+      <h3>Куда ставится</h3><p>${c.where}</p>
+      <h3>Как не ошибиться</h3><p>${c.tip}</p>
+      <h3>Характеристики</h3>${specsHTML(c.specs)}
+      ${c.installed ? `<button class="btn" type="button" data-act="remove">Снять с платы</button>` : `<button class="btn btn-power" type="button" data-act="install">Установить автоматически</button>`}`;
+  } else {
+    const p = PARTS[selected.id];
+    h = `<button class="link" type="button" data-back>← Вся плата</button>
+      <div class="kind">${p.kind}</div><h2>${p.name}</h2><p>${p.desc}</p>${p.tip ? `<h3>Полезно знать</h3><p>${p.tip}</p>` : ''}`;
+  }
+  infoEl.innerHTML = h;
+}
+function updateUI() {
+  for (const el of cardsEl.children) {
+    const id = el.dataset.id, c = COMP[id];
+    el.classList.toggle('installed', c.installed);
+    el.classList.toggle('selected', selected?.type === 'comp' && selected.id === id);
+    el.querySelector('.state').textContent = c.installed ? `Установлено · ${slotLabel(id)}` : 'На столе';
+  }
+  for (const el of $('#segs').children) el.classList.toggle('done', COMP[el.dataset.id].installed);
+  const n = installedCount();
+  $('#progText').textContent = `${n} из 4 установлено`;
+  const pb = $('#powerBtn');
+  pb.classList.toggle('on', powered);
+  pb.classList.toggle('ready', n === 4 && !powered);
+  pb.disabled = busyPower;
+  $('#powerLabel').textContent = powered ? 'Выключить' : busyPower ? 'Проверка…' : 'Включить';
+  renderInfo();
+}
+function refreshHints() {
+  for (const s of SLOTS) glow[s.id].hint = false;
+  const id = drag?.active ? drag.id : (selected?.type === 'comp' ? selected.id : null);
+  if (id && !COMP[id].installed) glow[DEFAULT_SLOT[id]].hint = true;
+}
+function paintParts() {
+  for (const g of pickParts) {
+    const id = g.userData.part;
+    const lvl = id === hoverPart ? .3 : (selected?.type === 'part' && selected.id === id ? .18 : 0);
+    if (g.userData.lvl === lvl) continue;
+    g.userData.lvl = lvl;
+    g.traverse(o => {
+      if (!o.isMesh || o.userData.keep) return;
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) { m.emissive.copy(COPPER); m.emissiveIntensity = lvl; }
+    });
+  }
+}
+function select(sel) {
+  selected = sel;
+  refreshHints(); paintParts(); updateUI();
+}
+
+/* ---------- правила установки ---------- */
+const ok = tip => ({ ok: true, tip });
+const bad = msg => ({ ok: false, msg });
+function evaluate(id, s) {
+  const c = COMP[id];
+  if (id === 'cpu' && s.kind === 'socket') return ok();
+  if (id === 'cooler' && s.kind === 'socket')
+    return COMP.cpu.installed ? ok() : bad('Сначала процессор. Кулер крепится поверх процессора и прижимает его через слой термопасты.');
+  if (id === 'ram' && s.kind === 'dimm')
+    return s.label === 'A2' ? ok() : ok(`Модуль заработает и в ${s.label}, но для одного модуля производитель советует слот A2 — второй от процессора.`);
+  if (id === 'gpu' && s.kind === 'pcie16')
+    return s.primary ? ok() : ok('Работать будет, но этот слот подключён к чипсету в режиме x4, и видеокарта потеряет часть скорости. Лучше верхний PCIEX16_1.');
+  if (id === 'gpu' && s.kind === 'pcie1')
+    return bad('Слот PCIe x1 слишком короткий: у видеокарты разъём x16 — длинная гребёнка контактов. Нужен длинный слот с металлической оплёткой.');
+  if (s.kind === 'socket' && COMP.cpu.installed && id !== 'cooler')
+    return bad(`В сокете уже стоит процессор. ${c.name}: ${c.whereShort}.`);
+  return bad(`Это ${s.name}. ${c.name} сюда не подходит: ${c.whereShort}.`);
+}
+function slotDist(s, p) {
+  return Math.hypot(Math.max(Math.abs(p.x - s.x) - s.hx, 0), Math.max(Math.abs(p.z - s.z) - s.hz, 0));
+}
+
+/* ---------- анимации ---------- */
+const tweens = [];
+function tween(dur, fn, done) { tweens.push({ t0: performance.now(), dur: REDUCED ? Math.min(dur, 150) : dur, fn, done }); }
+
+function install(id, slot, from) {
+  const c = COMP[id], g = c.group, to = target(id, slot);
+  c.installed = true; c.slot = slot; ledFault = null;
+  const start = from ? from.clone() : to.clone().add(new V3(0, 10, 0));
+  const above = to.clone(); above.y += 1.6;
+  g.position.copy(start); g.visible = true;
+  tween(from ? 520 : 750, k => {
+    if (k < .4) g.position.lerpVectors(start, above, easeInOut(k / .4));
+    else g.position.lerpVectors(above, to, easeOut((k - .4) / .6));
+  }, () => { g.position.copy(to); glow[slot.id].flashT = performance.now(); glow[slot.id].flashC = GREEN; });
+  refreshHints(); updateUI();
+}
+function uninstall(id) {
+  const c = COMP[id];
+  if (powered || busyPower) { toast('Сначала выключите компьютер. Компоненты меняют только без питания — иначе можно повредить плату.', 'bad'); return; }
+  if (id === 'cpu' && COMP.cooler.installed) { toast('Сначала снимите кулер: он закрывает процессор.', 'bad'); return; }
+  c.installed = false; c.slot = null; ledFault = null;
+  const g = c.group, from = g.position.clone();
+  tween(420, k => { g.position.set(from.x, from.y + easeInOut(k) * 10, from.z); }, () => { if (!c.installed) g.visible = false; });
+  refreshHints(); updateUI();
+}
+function autoInstall(id) {
+  const s = SLOT[DEFAULT_SLOT[id]], v = evaluate(id, s);
+  if (!v.ok) { toast(v.msg, 'bad'); glow[s.id].flashT = performance.now(); glow[s.id].flashC = RED; return; }
+  install(id, s);
+  afterInstall(id, v);
+}
+function afterInstall(id, v) {
+  const c = COMP[id];
+  const msg = id === 'ram' ? `${c.done} ${slotLabel('ram')}.` : c.done;
+  if (installedCount() === 4) toast(`${msg} Все детали на месте — нажмите «Включить», чтобы проверить сборку.`, 'ok', 8000);
+  else toast(v.tip ? `${msg} ${v.tip}` : msg, v.tip ? 'info' : 'ok', v.tip ? 9000 : 6000);
+}
+
+/* ---------- перетаскивание с карточки на плату ---------- */
+const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2(), boardPlane = new THREE.Plane(new V3(0, 1, 0), 0);
+let drag = null, suppressClick = false;
+function toNDC(e) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
+  return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+}
+cardsEl.addEventListener('pointerdown', e => {
+  const card = e.target.closest('.card'); if (!card || e.button > 0) return;
+  const id = card.dataset.id;
+  if (COMP[id].installed || powered || busyPower) return;
+  drag = { id, card, sx: e.clientX, sy: e.clientY, active: false, slot: null, verdict: null, goal: new V3(), shown: false };
+});
+window.addEventListener('pointermove', e => {
+  if (!drag) return;
+  if (!drag.active) {
+    if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 7) return;
+    drag.active = true; controls.enabled = false;
+    document.body.classList.add('dragging'); drag.card.classList.add('dragging');
+    tipEl.hidden = true; hoverPart = null;
+    select({ type: 'comp', id: drag.id });
+  }
+  updateDrag(e);
+});
+window.addEventListener('pointerup', e => { if (drag) { if (drag.active) endDrag(e); drag = null; } });
+window.addEventListener('pointercancel', () => { if (drag?.active) cancelDrag(); drag = null; });
+
+function clearHover() { for (const s of SLOTS) glow[s.id].hover = null; }
+function updateDrag(e) {
+  const c = COMP[drag.id], g = c.group;
+  clearHover();
+  if (!toNDC(e)) { g.visible = false; ring.visible = false; drag.slot = null; drag.shown = false; return; }
+  raycaster.setFromCamera(ndc, camera);
+  const P = new V3();
+  if (!raycaster.ray.intersectPlane(boardPlane, P)) return;
+  let best = null, bd = 1.3;
+  for (const s of SLOTS) { const d = slotDist(s, P); if (d < bd) { bd = d; best = s; } }
+  drag.slot = best; drag.verdict = best ? evaluate(drag.id, best) : null;
+  if (best && drag.verdict.ok) { const t = target(drag.id, best); drag.goal.set(t.x, t.y + c.lift, t.z); glow[best.id].hover = 'ok'; }
+  else { drag.goal.set(P.x, TARGET_Y[drag.id] + c.lift + .4, P.z); if (best) glow[best.id].hover = 'bad'; }
+  ring.position.set(P.x, .06, P.z); ring.visible = true;
+  ring.material.color.copy(best ? (drag.verdict.ok ? GREEN : RED) : COPPER);
+  if (!drag.shown) { g.position.copy(drag.goal); g.visible = true; drag.shown = true; }
+}
+function finishDragUI() {
+  ring.visible = false; clearHover(); controls.enabled = true;
+  document.body.classList.remove('dragging'); drag.card.classList.remove('dragging');
+  suppressClick = true; setTimeout(() => suppressClick = false, 60);
+}
+function dropBack(id) {
+  const g = COMP[id].group;
+  if (!g.visible) return;
+  const from = g.position.clone();
+  tween(260, k => g.position.set(from.x, from.y + k * 6, from.z), () => { if (!COMP[id].installed) g.visible = false; });
+}
+function endDrag(e) {
+  const id = drag.id, inside = toNDC(e), s = drag.slot, v = drag.verdict;
+  finishDragUI();
+  if (inside && s && v.ok) { install(id, s, COMP[id].group.position.clone()); afterInstall(id, v); }
+  else {
+    dropBack(id);
+    if (inside && s) { toast(v.msg, 'bad'); glow[s.id].flashT = performance.now(); glow[s.id].flashC = RED; }
+    else if (inside) toast('Поднесите деталь к мигающему месту на плате. Когда рамка станет зелёной, отпустите.', 'info');
+  }
+  drag.active = false; refreshHints();
+}
+function cancelDrag() { const id = drag.id; finishDragUI(); dropBack(id); drag.active = false; refreshHints(); }
+cardsEl.addEventListener('click', e => {
+  const card = e.target.closest('.card'); if (!card || suppressClick) return;
+  select({ type: 'comp', id: card.dataset.id });
+});
+
+/* ---------- клики и подсказки в 3D ---------- */
+function pick(e) {
+  toNDC(e); raycaster.setFromCamera(ndc, camera);
+  const targets = [...pickParts, ...ORDER.filter(id => COMP[id].installed).map(id => COMP[id].group)];
+  const hit = raycaster.intersectObjects(targets, true)[0];
+  for (let o = hit?.object; o; o = o.parent) {
+    if (o.userData.part) return { type: 'part', id: o.userData.part };
+    if (o.userData.comp) return { type: 'comp', id: o.userData.comp };
+  }
+  return null;
+}
+let downAt = null;
+canvas.addEventListener('pointerdown', e => { downAt = { x: e.clientX, y: e.clientY }; });
+canvas.addEventListener('pointermove', e => {
+  if (drag?.active || e.buttons) return;
+  const p = pick(e);
+  const newHover = p?.type === 'part' ? p.id : null;
+  if (newHover !== hoverPart) { hoverPart = newHover; paintParts(); }
+  canvas.classList.toggle('hot', !!p);
+  if (p) {
+    const r = stage.getBoundingClientRect();
+    tipEl.textContent = p.type === 'part' ? PARTS[p.id].name : COMP[p.id].name;
+    tipEl.style.left = (e.clientX - r.left) + 'px'; tipEl.style.top = (e.clientY - r.top) + 'px';
+    tipEl.hidden = false;
+  } else tipEl.hidden = true;
+});
+canvas.addEventListener('pointerleave', () => { tipEl.hidden = true; if (hoverPart) { hoverPart = null; paintParts(); } });
+canvas.addEventListener('pointerup', e => {
+  if (drag || !downAt) return;
+  if (Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 6) select(pick(e));
+  downAt = null;
+});
+infoEl.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.part) select({ type: 'part', id: b.dataset.part });
+  else if ('back' in b.dataset) select(null);
+  else if (b.dataset.act === 'install') autoInstall(selected.id);
+  else if (b.dataset.act === 'remove') uninstall(selected.id);
+});
+
+/* ---------- включение и самотест POST ---------- */
+function setLed(n, on) {
+  const L = LED[n];
+  L.m.color.set(on ? L.color : 0x353c42); L.m.emissive.set(on ? L.color : 0x000000); L.m.emissiveIntensity = on ? 2.5 : 0;
+  L.haloM.opacity = on ? .55 : 0;
+}
+const allLeds = on => Object.keys(LED).forEach(n => setLed(n, on));
+async function pressPower() {
+  if (busyPower) return;
+  if (powered) { powered = false; spinTarget = 0; toast('Компьютер выключен.', 'info', 3000); updateUI(); return; }
+  busyPower = true; ledFault = null; allLeds(false); spinTarget = 1; updateUI();
+  toast('Плата проверяет компоненты. Следите за индикаторами Q-LED в правом верхнем углу платы.', 'info');
+  const steps = [
+    ['cpu', () => COMP.cpu.installed, 'Плата не нашла процессор — горит индикатор CPU. Без процессора компьютер не запустится.'],
+    ['cpu', () => COMP.cooler.installed, 'Запуск остановлен: плата не видит кулер процессора. Без охлаждения процессор за секунды нагреется до 100 °C и аварийно отключится.'],
+    ['dram', () => COMP.ram.installed, 'Нет оперативной памяти — горит индикатор DRAM. Процессору некуда загрузить данные.'],
+    ['vga', () => COMP.gpu.installed, 'Нет видеокарты — горит индикатор VGA. У этого процессора нет встроенной графики, поэтому монитор останется чёрным.'],
+  ];
+  for (const [n, check, msg] of steps) {
+    setLed(n, true); await sleep(450);
+    if (!check()) {
+      ledFault = n; toast(msg, 'bad', 9000);
+      await sleep(2200); spinTarget = 0; busyPower = false; updateUI(); return;
+    }
+    setLed(n, false);
+  }
+  setLed('boot', true); await sleep(600); setLed('boot', false);
+  powered = true; busyPower = false;
+  toast('Сборка прошла самотестирование POST: процессор, память и видеокарта найдены. Дальше по плану — накопитель и операционная система.', 'ok', 10000);
+  updateUI();
+}
+$('#powerBtn').addEventListener('click', pressPower);
+$('#resetBtn').addEventListener('click', () => {
+  powered = false; busyPower = false; spinTarget = 0; ledFault = null; allLeds(false);
+  for (const id of ORDER) { const c = COMP[id]; c.installed = false; c.slot = null; c.group.visible = false; }
+  frameView(); select(null);
+  toast('Плата пустая. Начните с процессора.', 'info', 3500);
+});
+
+/* ---------- камера ---------- */
+function frameView() {
+  controls.target.set(0, 1.5, 0.5);
+  const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const d = Math.max(17.5 / t, 16 / (t * camera.aspect));
+  camera.position.copy(controls.target).addScaledVector(VIEW_DIR, d);
+  controls.update();
+}
+$('#viewBtn').addEventListener('click', frameView);
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  if (!w || !h) return;
+  renderer.setSize(w, h);
+  const first = camera.aspect === 1 && !resize.done;
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  if (first) { frameView(); resize.done = true; }
+}
+new ResizeObserver(resize).observe(stage);
+resize();
+
+/* ---------- цикл кадров ---------- */
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime, now = performance.now();
+  controls.update();
+  for (let i = tweens.length - 1; i >= 0; i--) {
+    const tw = tweens[i], k = Math.min(1, (now - tw.t0) / tw.dur);
+    tw.fn(k);
+    if (k >= 1) { tweens.splice(i, 1); tw.done && tw.done(); }
+  }
+  if (drag?.active && drag.shown) COMP[drag.id].group.position.lerp(drag.goal, 1 - Math.pow(.0005, dt));
+  for (const s of SLOTS) {
+    const G = glow[s.id]; let op = 0, col = COPPER;
+    if (G.hover === 'ok') { op = .5; col = GREEN; }
+    else if (G.hover === 'bad') { op = .42; col = RED; }
+    else if (G.hint) op = .14 + .14 * (.5 + .5 * Math.sin(t * 4.5));
+    if (G.flashT >= 0) {
+      const k = (now - G.flashT) / 1000;
+      if (k < 1) { const f = .65 * (1 - k); if (f > op) { op = f; col = G.flashC; } } else G.flashT = -1;
+    }
+    G.o.visible = op > .01; G.m.opacity = op; G.m.color.copy(col);
+  }
+  fanSpeed += (spinTarget - fanSpeed) * Math.min(1, dt * (spinTarget ? 1.2 : .7));
+  if (!REDUCED || powered) for (const r of rotors) if (COMP[r.owner].installed) r.rotor.rotation.z += fanSpeed * dt * (REDUCED ? 4 : 28);
+  if (powered) { MAT.rgb.emissive.setHSL((t * .07) % 1, .85, .55); MAT.rgb.emissiveIntensity = 1.6 * fanSpeed; }
+  else MAT.rgb.emissiveIntensity = 0;
+  if (ledFault) setLed(ledFault, Math.floor(t * 2.5) % 2 === 0);
+  renderer.render(scene, camera);
+});
+
+$('#loading').remove();
+select(null);
+toast('Начните с процессора: перетащите его карточку на сокет в центре платы.', 'info', 7000);
+</script>
+</body>
+</html>

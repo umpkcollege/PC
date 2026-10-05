@@ -2887,8 +2887,21 @@ function useGPUModel(model) {
   ENC.gpu.build = encGPUModel;
   if (ENC.gpu.model) { if (enc.model === ENC.gpu.model) encScene.remove(enc.model.root); ENC.gpu.model = null; if (mode === 'enc' && enc.id === 'gpu') encOpen('gpu'); }
 }
-new GLTFLoader().load('models/gpu.glb', gl => useGPUModel(prepGPU(gl.scene)), undefined,
-  err => console.warn('Файл models/gpu.glb не загрузился, остаётся видеокарта из кода.', err));
+// Сначала обычный .glb (GitHub Pages, локальный запуск); если его нет — та же модель в base64 (так её отдаёт страница на Claude).
+(async () => {
+  const isGlb = b => b && b.byteLength > 12 && new TextDecoder().decode(new Uint8Array(b, 0, 4)) === 'glTF';
+  try {
+    let buf = null;
+    try { const r = await fetch('models/gpu.glb'); if (r.ok) buf = await r.arrayBuffer(); } catch (e) {}
+    if (!isGlb(buf)) {
+      const r = await fetch('models/gpu.b64.txt'); if (!r.ok) throw new Error('нет файла модели');
+      const bin = atob((await r.text()).trim()), u8 = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      buf = u8.buffer;
+    }
+    new GLTFLoader().parse(buf, '', gl => useGPUModel(prepGPU(gl.scene)), err => console.warn('Модель видеокарты не разобралась, остаётся модель из кода.', err));
+  } catch (err) { console.warn('Модель видеокарты не загрузилась, остаётся модель из кода.', err); }
+})();
 
 /* ---------- камера ---------- */
 let viewTween = null;

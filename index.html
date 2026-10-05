@@ -168,6 +168,47 @@ body.test-mode .card .step,body.test-mode .tray .hint{display:none}
 .choose{margin:0;padding-left:18px;color:var(--fg-2);display:grid;gap:5px}
 .fact{padding:12px 14px;border-radius:10px;background:var(--copper-soft);border:1px solid rgba(224,151,90,.3);color:var(--fg)!important}
 
+/* совместимость */
+.tasks{display:grid;gap:8px}
+.task{display:grid;gap:3px;text-align:left;width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--panel);cursor:pointer}
+.task:hover{background:var(--panel-2)}
+.task.selected{border-color:var(--copper)}
+.task:focus-visible,.opt:focus-visible{outline:2px solid var(--copper);outline-offset:2px}
+.task .tt{font:600 14.5px/1.3 var(--body)}
+.task .tb{font:500 12px var(--mono);color:var(--copper)}
+.task .td{font-size:12.5px;color:var(--muted);line-height:1.4}
+.pick{position:absolute;inset:0;overflow:auto;background:var(--bg);padding:16px 16px 28px;z-index:4;display:grid;gap:22px;align-content:start}
+.cat-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cat-head h3{font:700 15px/1.2 var(--display);margin:0}
+.cat-flag{font:600 11px var(--mono);padding:2px 8px;border-radius:999px}
+.cat-flag.bad{background:rgba(255,123,110,.14);color:var(--bad)}
+.cat-flag.warn{background:var(--copper-soft);color:var(--copper)}
+.pick-cat > p{margin:4px 0 10px;color:var(--muted);font-size:13px;max-width:70ch}
+.opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(186px,1fr));gap:8px}
+.opt{display:grid;gap:7px;align-content:start;text-align:left;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--panel);cursor:pointer;min-width:0}
+.opt:hover{border-color:#4a5a67}
+.opt[aria-pressed="true"]{border-color:var(--copper);box-shadow:inset 0 0 0 1px var(--copper);background:#1d1a17}
+.opt.bad[aria-pressed="true"]{border-color:var(--bad);box-shadow:inset 0 0 0 1px var(--bad);background:#211617}
+.opt .on{font:600 14px/1.3 var(--body)}
+.opt .chips{display:flex;flex-wrap:wrap;gap:4px}
+.opt .chips span{font:500 11px var(--mono);padding:2px 7px;border-radius:999px;background:var(--panel-2);color:var(--fg-2)}
+.opt .price{font:600 13px var(--mono);color:var(--copper);font-variant-numeric:tabular-nums}
+.meter{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin:10px 0 4px}
+.meter i{display:block;height:100%;background:var(--copper);transition:width .3s}
+.meter i.over{background:var(--bad)}
+.muted{color:var(--muted)!important;font-size:13px}
+.verdict{font:600 15px/1.35 var(--body);padding:10px 12px;border-radius:10px;margin:0 0 10px}
+.verdict.ok{color:var(--ok);background:rgba(92,207,152,.1)}
+.verdict.bad{color:var(--bad);background:rgba(255,123,110,.09)}
+.verdict.warn{color:var(--copper);background:var(--copper-soft)}
+.checks{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.checks li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:10px;padding:9px 10px;border-radius:10px;background:var(--panel);border:1px solid var(--line);font-size:13px;line-height:1.45;color:var(--fg-2)}
+.checks i{font-style:normal;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;font:700 12px var(--mono)}
+.checks li.ok i{background:rgba(92,207,152,.15);color:var(--ok)}
+.checks li.bad{border-color:rgba(255,123,110,.4)} .checks li.bad i{background:rgba(255,123,110,.15);color:var(--bad)}
+.checks li.warn{border-color:rgba(224,151,90,.4)} .checks li.warn i{background:var(--copper-soft);color:var(--copper)}
+.checks strong{display:block;color:var(--fg);font-weight:600}
+
 @media (max-width: 980px){
   html,body{height:auto}
   body{overflow:auto}
@@ -204,6 +245,7 @@ body.test-mode .card .step,body.test-mode .tray .hint{display:none}
       <button type="button" data-mode="learn" aria-pressed="true">Обучение</button>
       <button type="button" data-mode="test" aria-pressed="false">Тест</button>
       <button type="button" data-mode="enc" aria-pressed="false">Энциклопедия</button>
+      <button type="button" data-mode="pick" aria-pressed="false">Совместимость</button>
     </div>
     <div class="progress" aria-label="Прогресс сборки">
       <div class="segs" id="segs"></div>
@@ -224,6 +266,11 @@ body.test-mode .card .step,body.test-mode .tray .hint{display:none}
     <p class="hint">Выберите деталь. Вращайте её мышью, а ползунком под сценой разберите на части.</p>
     <div id="encList" class="cards"></div>
    </div>
+   <div id="pickTray" hidden>
+    <h2 class="eyebrow">Задания</h2>
+    <p class="hint">Выберите задание и подберите детали, которые подходят друг к другу. Потом нажмите «Проверить сборку».</p>
+    <div id="taskList" class="tasks"></div>
+   </div>
    <div id="buildTray">
     <h2 class="eyebrow">Комплектующие</h2>
     <p class="hint">Перетащите деталь в корпус. Нажмите на карточку, чтобы прочитать о детали: нужное место начнёт мигать.</p>
@@ -239,6 +286,7 @@ body.test-mode .card .step,body.test-mode .tray .hint{display:none}
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <div id="tip" class="tip" hidden></div>
     <div id="result" class="modal" role="dialog" aria-modal="true" aria-labelledby="resultTitle" hidden></div>
+    <div id="pickView" class="pick" hidden></div>
     <div id="encLabels" class="elabels" hidden></div>
     <div id="encControls" class="enc-controls" hidden>
       <div class="range"><span>Собрано</span><input id="explode" type="range" min="0" max="100" value="0" aria-label="Разобрать деталь на части"><span>Разобрано</span></div>
@@ -1205,6 +1253,7 @@ function renderTestInfo() {
 }
 function renderInfo() {
   if (mode === 'enc') { renderEncInfo(); return; }
+  if (mode === 'pick') { renderPickInfo(); return; }
   if (isTest()) { renderTestInfo(); return; }
   let h = '';
   if (!selected) {
@@ -1524,6 +1573,8 @@ infoEl.addEventListener('click', e => {
   else if (b.dataset.act === 'install') autoInstall(selected.id);
   else if (b.dataset.act === 'remove') uninstall(selected.id);
   else if (b.dataset.act === 'start-test') startTest();
+  else if (b.dataset.act === 'pick-check') pickCheck();
+  else if (b.dataset.act === 'pick-clear') { cmp.sel = {}; cmp.result = null; renderPick(); renderInfo(); }
   else if (b.dataset.act === 'abort-test') { test.active = false; test.done = false; resetBuild(); toast('Тест прерван.', 'info', 3000); }
 });
 infoEl.addEventListener('input', e => { if (e.target.id === 'studentName') test.name = e.target.value.trim(); });
@@ -1597,19 +1648,21 @@ function shuffleCards(on) {
 function setMode(m) {
   if (m === mode) return;
   mode = m;
-  const encOn = m === 'enc';
+  const encOn = m === 'enc', pickOn = m === 'pick', other = encOn || pickOn;
   document.body.classList.toggle('test-mode', m === 'test');
   document.body.classList.toggle('enc-mode', encOn);
   document.querySelectorAll('.mode button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
-  $('#subtitle').textContent = { learn: 'Урок 1 · Собираем системный блок', test: 'Тест · Сборка системного блока', enc: 'Энциклопедия · Из чего состоит компьютер' }[m];
-  $('#buildTray').hidden = encOn; $('#encTray').hidden = !encOn;
-  $('.progress').hidden = encOn; $('.actions').hidden = encOn; $('.stage-foot').hidden = encOn;
-  $('#encControls').hidden = !encOn; $('#encLabels').hidden = !encOn;
-  controls.enabled = !encOn; encControls.enabled = encOn;
+  $('#subtitle').textContent = { learn: 'Урок 1 · Собираем системный блок', test: 'Тест · Сборка системного блока',
+    enc: 'Энциклопедия · Из чего состоит компьютер', pick: 'Совместимость · Подбираем детали' }[m];
+  $('#buildTray').hidden = other; $('#encTray').hidden = !encOn; $('#pickTray').hidden = !pickOn;
+  $('.progress').hidden = other; $('.actions').hidden = other; $('.stage-foot').hidden = other;
+  $('#encControls').hidden = !encOn; $('#encLabels').hidden = !encOn; $('#pickView').hidden = !pickOn;
+  controls.enabled = !other; encControls.enabled = encOn;
   test.active = false; test.done = false; resultEl.hidden = true;
   shuffleCards(false); hoverPart = null; tipEl.hidden = true; toastEl.hidden = true; canvas.classList.remove('hot');
   if (m === 'test') { resetBuild(); toast('Режим теста. Введите имя справа и нажмите «Начать тест».', 'info'); }
   else if (encOn) encOpen(enc.id || 'gpu');
+  else if (pickOn) { renderPick(); renderInfo(); }
   else select(null);
 }
 document.querySelectorAll('.mode button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
@@ -2097,6 +2150,199 @@ function encFrame(dt) {
   renderer.render(encScene, encCam);
 }
 
+/* ================= Совместимость ================= */
+// Названия моделей учебные, характеристики — реалистичные.
+const rub = n => n.toLocaleString('ru-RU') + ' ₽';
+const ALL_SOCKETS = ['LGA1700', 'AM4', 'AM5'];
+const PICK = [
+  { key: 'cpu', title: 'Процессор', hint: 'Сокет должен совпасть с платой. Смотрите также на число ядер, тепловыделение (TDP) и встроенную графику.',
+    chips: o => [o.socket, `${o.cores} ядер / ${o.threads} потоков`, `TDP ${o.tdp} Вт`, o.igpu ? 'есть графика' : 'без графики'], opts: [
+      { id: 'c1', name: 'EDU Core 3 4100', price: 9000, socket: 'LGA1700', cores: 4, threads: 8, tdp: 60, igpu: true },
+      { id: 'c2', name: 'EDU Core 5 6400F', price: 13000, socket: 'LGA1700', cores: 6, threads: 12, tdp: 65, igpu: false },
+      { id: 'c3', name: 'EDU Core 7 8700K', price: 32000, socket: 'LGA1700', cores: 12, threads: 20, tdp: 125, igpu: true },
+      { id: 'c4', name: 'EDU Nova 5 7600', price: 18000, socket: 'AM5', cores: 6, threads: 12, tdp: 65, igpu: true },
+      { id: 'c5', name: 'EDU Nova 5 5600', price: 10000, socket: 'AM4', cores: 6, threads: 12, tdp: 65, igpu: false },
+      { id: 'c6', name: 'EDU Nova 9 7950', price: 52000, socket: 'AM5', cores: 16, threads: 32, tdp: 170, igpu: true },
+    ] },
+  { key: 'board', title: 'Материнская плата', hint: 'Плата задаёт сокет процессора, тип памяти (DDR4 или DDR5) и формат, под который нужен корпус.',
+    chips: o => [o.socket, o.mem, o.form, `M.2 × ${o.m2}`], opts: [
+      { id: 'm1', name: 'EDU B760M', price: 11000, socket: 'LGA1700', mem: 'DDR4', form: 'mATX', m2: 2 },
+      { id: 'm2', name: 'EDU Z790', price: 25000, socket: 'LGA1700', mem: 'DDR5', form: 'ATX', m2: 4 },
+      { id: 'm5', name: 'EDU H610-ITX', price: 9500, socket: 'LGA1700', mem: 'DDR4', form: 'Mini-ITX', m2: 1 },
+      { id: 'm3', name: 'EDU B650', price: 16000, socket: 'AM5', mem: 'DDR5', form: 'ATX', m2: 3 },
+      { id: 'm4', name: 'EDU B550', price: 9000, socket: 'AM4', mem: 'DDR4', form: 'ATX', m2: 2 },
+    ] },
+  { key: 'ram', title: 'Оперативная память', hint: 'Тип памяти должен совпасть с платой. Два одинаковых модуля включают двухканальный режим.',
+    chips: o => [o.type, `${o.modules} × ${o.size} ГБ`, `${o.speed} МТ/с`], opts: [
+      { id: 'r1', name: 'DDR4 16 ГБ (2 × 8)', price: 4000, type: 'DDR4', modules: 2, size: 8, speed: 3200 },
+      { id: 'r2', name: 'DDR4 32 ГБ (2 × 16)', price: 7500, type: 'DDR4', modules: 2, size: 16, speed: 3600 },
+      { id: 'r4', name: 'DDR5 16 ГБ (1 × 16)', price: 5000, type: 'DDR5', modules: 1, size: 16, speed: 5600 },
+      { id: 'r3', name: 'DDR5 32 ГБ (2 × 16)', price: 9500, type: 'DDR5', modules: 2, size: 16, speed: 5600 },
+      { id: 'r5', name: 'DDR5 64 ГБ (2 × 32)', price: 18000, type: 'DDR5', modules: 2, size: 32, speed: 5600 },
+    ] },
+  { key: 'cooler', title: 'Кулер', hint: 'Крепление должно подходить к сокету, мощность — с запасом к TDP процессора, а высота — помещаться в корпус.',
+    chips: o => [o.sockets.length === 3 ? 'все сокеты' : o.sockets.join(', '), `до ${o.tdp} Вт`, `высота ${String(o.h).replace('.', ',')} см`], opts: [
+      { id: 'k1', name: 'Боксовый кулер', price: 1500, sockets: ['LGA1700'], tdp: 65, h: 5.5 },
+      { id: 'k4', name: 'Низкопрофильный 95 Вт', price: 3000, sockets: ALL_SOCKETS, tdp: 95, h: 6.5 },
+      { id: 'k2', name: 'Башенный 180 Вт', price: 3500, sockets: ALL_SOCKETS, tdp: 180, h: 15.5 },
+      { id: 'k3', name: 'Двухбашенный 250 Вт', price: 7000, sockets: ALL_SOCKETS, tdp: 250, h: 16.5 },
+    ] },
+  { key: 'gpu', title: 'Видеокарта', hint: 'Без видеокарты изображение выводит только процессор со встроенной графикой. Карте нужны место в корпусе и мощность блока питания.',
+    chips: o => o.vram ? [`${o.vram} ГБ`, `${o.power} Вт`, `длина ${o.len} см`, `БП от ${o.psu} Вт`] : ['нужна встроенная графика'], opts: [
+      { id: 'g0', name: 'Без видеокарты', price: 0 },
+      { id: 'g1', name: 'EDU GX 3050 Mini', price: 22000, vram: 6, power: 130, len: 19, psu: 450 },
+      { id: 'g2', name: 'EDU GX 4060', price: 32000, vram: 8, power: 170, len: 24, psu: 550 },
+      { id: 'g3', name: 'EDU GX 4080', price: 95000, vram: 16, power: 320, len: 34, psu: 750 },
+    ] },
+  { key: 'storage', title: 'Накопитель', hint: 'Систему ставят на SSD. NVMe работает в слоте M.2 и быстрее SATA в несколько раз.',
+    chips: o => [o.type, o.cap], opts: [
+      { id: 's1', name: 'SSD SATA 500 ГБ', price: 3500, type: 'SATA SSD', cap: '500 ГБ' },
+      { id: 's2', name: 'SSD NVMe 1 ТБ', price: 6500, type: 'NVMe', cap: '1 ТБ' },
+      { id: 's4', name: 'SSD NVMe 2 ТБ', price: 12000, type: 'NVMe', cap: '2 ТБ' },
+      { id: 's3', name: 'HDD 2 ТБ', price: 5000, type: 'HDD', cap: '2 ТБ' },
+    ] },
+  { key: 'psu', title: 'Блок питания', hint: 'Мощность — потребление процессора и видеокарты плюс 75 Вт на остальное, и ещё 30 % запаса.',
+    chips: o => [`${o.w} Вт`, `80 PLUS ${o.cert}`], opts: [
+      { id: 'p1', name: 'EDU Power 400', price: 3500, w: 400, cert: 'Bronze' },
+      { id: 'p2', name: 'EDU Power 550', price: 5000, w: 550, cert: 'Bronze' },
+      { id: 'p3', name: 'EDU Power 750', price: 9000, w: 750, cert: 'Gold' },
+      { id: 'p4', name: 'EDU Power 1000', price: 14000, w: 1000, cert: 'Gold' },
+    ] },
+  { key: 'case', title: 'Корпус', hint: 'Корпус должен принимать формат платы, длину видеокарты и высоту кулера.',
+    chips: o => [`платы: ${o.forms.join(', ')}`, `видеокарта до ${o.gpuMax} см`, `кулер до ${o.coolMax} см`], opts: [
+      { id: 'case1', name: 'Компактный Mini-ITX', price: 5000, forms: ['Mini-ITX'], gpuMax: 22, coolMax: 7 },
+      { id: 'case3', name: 'Мини-башня mATX', price: 4500, forms: ['mATX', 'Mini-ITX'], gpuMax: 28, coolMax: 15 },
+      { id: 'case2', name: 'Mid-Tower ATX', price: 6000, forms: ['ATX', 'mATX', 'Mini-ITX'], gpuMax: 36, coolMax: 17 },
+    ] },
+];
+const ramGB = s => s.ram.modules * s.ram.size;
+const TASKS = [
+  { id: 'free', title: 'Свободная сборка', budget: 0, short: 'Соберите любой компьютер, главное — чтобы всё было совместимо.',
+    desc: 'Выберите по одной детали в каждой категории так, чтобы они подходили друг к другу. Бюджет не ограничен.', reqs: [] },
+  { id: 'office', title: 'Офисный компьютер', budget: 45000, short: 'Документы, браузер, видеозвонки.',
+    desc: 'Компьютер для бухгалтерии: документы, браузер, видеозвонки. Игры не нужны — подумайте, на чём можно сэкономить.', reqs: [] },
+  { id: 'gaming', title: 'Игровой ПК для Full HD', budget: 110000, short: 'Современные игры в 1920 × 1080.',
+    desc: 'Компьютер для современных игр в разрешении 1920 × 1080 на высоких настройках.', reqs: [
+      { text: 'Видеокарта с 8 ГБ памяти или больше', cats: ['gpu'], test: s => (s.gpu.vram || 0) >= 8, bad: 'Для игр в Full HD нужна видеокарта с 8 ГБ видеопамяти или больше.' },
+      { text: '16 ГБ памяти в двух модулях', cats: ['ram'], test: s => ramGB(s) >= 16 && s.ram.modules === 2, bad: 'Играм нужно 16 ГБ, и лучше двумя модулями — для двухканального режима.' },
+      { text: 'Быстрый SSD NVMe', cats: ['storage'], test: s => s.storage.type === 'NVMe', bad: 'Игры загружаются заметно быстрее с SSD NVMe.' },
+    ] },
+  { id: 'compact', title: 'Компактный ПК', budget: 70000, short: 'Маленький корпус для лёгких игр в общежитии.',
+    desc: 'Компьютер в маленький корпус Mini-ITX, чтобы помещался на столе в общежитии. Нужен для учёбы и лёгких игр.', reqs: [
+      { text: 'Корпус Mini-ITX', cats: ['case'], test: s => s.case.id === 'case1', bad: 'В задании нужен компактный корпус Mini-ITX.' },
+      { text: 'Видеокарта для лёгких игр', cats: ['gpu'], test: s => (s.gpu.vram || 0) >= 6, bad: 'Для лёгких игр нужна хотя бы небольшая видеокарта.' },
+    ] },
+  { id: 'video', title: 'Станция для монтажа видео', budget: 170000, short: 'Монтаж 4K, много ядер и памяти.',
+    desc: 'Компьютер для монтажа видео в 4K. Нужны многоядерный процессор, много оперативной памяти и быстрый накопитель.', reqs: [
+      { text: 'Процессор от 12 ядер', cats: ['cpu'], test: s => s.cpu.cores >= 12, bad: 'Монтаж и рендер видео ускоряются с числом ядер: нужно 12 и больше.' },
+      { text: 'От 32 ГБ оперативной памяти', cats: ['ram'], test: s => ramGB(s) >= 32, bad: 'Монтажным программам для 4K нужно 32 ГБ памяти и больше.' },
+      { text: 'Быстрый SSD NVMe', cats: ['storage'], test: s => s.storage.type === 'NVMe', bad: 'Видео 4K с медленного накопителя будет тормозить при просмотре на таймлайне.' },
+    ] },
+];
+const cmp = { task: 'free', sel: {}, result: null };
+const pickOpt = (cat, id) => PICK.find(c => c.key === cat).opts.find(o => o.id === id);
+function pickSel() { const s = {}; for (const c of PICK) if (cmp.sel[c.key]) s[c.key] = pickOpt(c.key, cmp.sel[c.key]); return s; }
+const powerNeed = s => (s.cpu?.tdp || 0) + (s.gpu?.power || 0) + 75;
+
+function runCheck() {
+  const s = pickSel(), T = TASKS.find(t => t.id === cmp.task);
+  const missing = PICK.filter(c => !s[c.key]).map(c => c.title.toLowerCase());
+  if (missing.length) return { missing };
+  const list = [], add = (status, cats, title, text) => list.push({ status, cats, title, text });
+  const { cpu, board, ram, cooler, gpu, storage, psu } = s, cs = s.case;
+  add(cpu.socket === board.socket ? 'ok' : 'bad', ['cpu', 'board'], 'Сокет процессора и платы',
+    cpu.socket === board.socket ? `Оба — ${cpu.socket}.` : `Процессор под сокет ${cpu.socket}, а плата — ${board.socket}. Процессор физически не встанет на плату.`);
+  add(ram.type === board.mem ? 'ok' : 'bad', ['ram', 'board'], 'Тип памяти',
+    ram.type === board.mem ? `Плата и память — ${ram.type}.` : `Плата рассчитана на ${board.mem}, а память ${ram.type}. Модуль не войдёт в слот: у поколений разные ключи.`);
+  if (ram.modules === 1) add('warn', ['ram'], 'Один модуль памяти', 'Память будет работать в одноканальном режиме — заметно медленнее. Лучше два одинаковых модуля.');
+  add(cooler.sockets.includes(cpu.socket) ? 'ok' : 'bad', ['cooler', 'cpu'], 'Крепление кулера',
+    cooler.sockets.includes(cpu.socket) ? `Кулер крепится на сокет ${cpu.socket}.` : `Крепление кулера подходит только к ${cooler.sockets.join(', ')}, а у процессора ${cpu.socket}.`);
+  const coolRec = Math.ceil(cpu.tdp * 1.4 / 5) * 5;
+  if (cooler.tdp < cpu.tdp) add('bad', ['cooler', 'cpu'], 'Кулер не справится', `Процессор выделяет до ${cpu.tdp} Вт тепла, а кулер рассчитан на ${cooler.tdp} Вт. Процессор будет перегреваться и сбрасывать частоту.`);
+  else if (cooler.tdp < coolRec) add('warn', ['cooler'], 'Кулер на пределе', `Кулер на ${cooler.tdp} Вт для процессора на ${cpu.tdp} Вт — почти без запаса: под нагрузкой будет шумно и жарко. Лучше кулер от ${coolRec} Вт.`);
+  else add('ok', ['cooler'], 'Охлаждение', `Кулер рассчитан на ${cooler.tdp} Вт, процессору нужно ${cpu.tdp} Вт.`);
+  if (!gpu.vram && !cpu.igpu) add('bad', ['gpu', 'cpu'], 'Нет вывода изображения', 'У процессора нет встроенной графики, а видеокарта не выбрана. Монитор не к чему подключить.');
+  else add('ok', ['gpu'], 'Вывод изображения', gpu.vram ? 'Изображение выводит видеокарта.' : 'Изображение выводит встроенная графика процессора.');
+  const need = powerNeed(s), rec = Math.max(Math.ceil(need * 1.3 / 50) * 50, gpu.psu || 0);
+  if (psu.w < need) add('bad', ['psu'], 'Блок питания слишком слабый', `Сборка потребляет около ${need} Вт, а блок выдаёт ${psu.w} Вт. Компьютер будет выключаться под нагрузкой.`);
+  else if (psu.w < rec) add('warn', ['psu'], 'Мало запаса по питанию', `Потребление около ${need} Вт. Нужен блок от ${rec} Вт${gpu.psu && gpu.psu >= rec ? ' — столько рекомендует производитель видеокарты' : ''}.`);
+  else add('ok', ['psu'], 'Питание', `Потребление около ${need} Вт, блок ${psu.w} Вт — запаса хватает.`);
+  add(cs.forms.includes(board.form) ? 'ok' : 'bad', ['case', 'board'], 'Плата и корпус',
+    cs.forms.includes(board.form) ? `Корпус принимает платы ${board.form}.` : `Корпус рассчитан на ${cs.forms.join(', ')}, а плата формата ${board.form} — она не поместится.`);
+  if (gpu.len) add(gpu.len <= cs.gpuMax ? 'ok' : 'bad', ['gpu', 'case'], 'Длина видеокарты',
+    gpu.len <= cs.gpuMax ? `Карта ${gpu.len} см, в корпус влезает до ${cs.gpuMax} см.` : `Видеокарта длиной ${gpu.len} см, а в корпус влезает только до ${cs.gpuMax} см.`);
+  const h = String(cooler.h).replace('.', ',');
+  add(cooler.h <= cs.coolMax ? 'ok' : 'bad', ['cooler', 'case'], 'Высота кулера',
+    cooler.h <= cs.coolMax ? `Кулер ${h} см, в корпусе место до ${cs.coolMax} см.` : `Кулер высотой ${h} см, а в корпусе место до ${cs.coolMax} см: боковая крышка не закроется.`);
+  if (storage.type === 'HDD') add('warn', ['storage'], 'Система на жёстком диске', 'Компьютер будет загружаться и открывать программы в несколько раз медленнее, чем с SSD.');
+  else add('ok', ['storage'], 'Накопитель', storage.type === 'NVMe' ? 'Система на быстром SSD NVMe в слоте M.2.' : 'Система на SSD SATA — быстро, но NVMe ещё быстрее.');
+  const total = Object.values(s).reduce((a, o) => a + o.price, 0);
+  if (T.budget) add(total <= T.budget ? 'ok' : 'bad', [], 'Бюджет', total <= T.budget ? `Итого ${rub(total)} из ${rub(T.budget)}.` : `Итого ${rub(total)} — на ${rub(total - T.budget)} больше бюджета.`);
+  for (const r of T.reqs) add(r.test(s) ? 'ok' : 'bad', r.cats, `Задание: ${lc(r.text)}`, r.test(s) ? 'Выполнено.' : r.bad);
+  const order = { bad: 0, warn: 1, ok: 2 };
+  list.sort((a, b) => order[a.status] - order[b.status]);
+  return { list };
+}
+function catFlag(key) {
+  const l = cmp.result?.list; if (!l) return null;
+  const st = l.filter(x => x.cats.includes(key)).map(x => x.status);
+  return st.includes('bad') ? 'bad' : st.includes('warn') ? 'warn' : null;
+}
+function renderPick() {
+  $('#pickView').innerHTML = PICK.map(c => {
+    const f = catFlag(c.key);
+    return `<section class="pick-cat">
+      <div class="cat-head"><h3>${c.title}</h3>${f ? `<span class="cat-flag ${f}">${f === 'bad' ? 'Ошибка' : 'Замечание'}</span>` : ''}</div>
+      <p>${c.hint}</p>
+      <div class="opts">${c.opts.map(o => `<button type="button" class="opt ${f === 'bad' ? 'bad' : ''}" data-cat="${c.key}" data-opt="${o.id}" aria-pressed="${cmp.sel[c.key] === o.id}">
+        <span class="on">${o.name}</span><span class="chips">${c.chips(o).map(t => `<span>${t}</span>`).join('')}</span><span class="price">${rub(o.price)}</span></button>`).join('')}</div>
+    </section>`;
+  }).join('');
+  for (const el of $('#taskList').children) el.classList.toggle('selected', el.dataset.task === cmp.task);
+}
+function renderPickInfo() {
+  const T = TASKS.find(t => t.id === cmp.task), s = pickSel();
+  const total = Object.values(s).reduce((a, o) => a + o.price, 0), chosen = Object.keys(s).length;
+  const over = T.budget && total > T.budget;
+  let h = `<div class="kind">Задание</div><h2>${T.title}</h2><p>${T.desc}</p>`;
+  if (T.reqs.length) h += `<h3>Требования</h3><ul class="rules">${T.reqs.map(r => `<li>${r.text}</li>`).join('')}</ul>`;
+  h += `<h3>Сборка</h3>
+    <div class="stats" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+      <div class="stat ${over ? 'bad' : ''}"><b>${rub(total)}</b><span>${T.budget ? 'из ' + rub(T.budget) : 'итого'}</span></div>
+      <div class="stat"><b>≈${chosen ? powerNeed(s) : 0} Вт</b><span>${s.psu ? 'блок питания ' + s.psu.w + ' Вт' : 'потребление'}</span></div>
+    </div>
+    ${T.budget ? `<div class="meter"><i class="${over ? 'over' : ''}" style="width:${Math.min(100, total / T.budget * 100)}%"></i></div>` : ''}
+    <p class="muted">Выбрано ${chosen} из ${PICK.length} категорий.</p>
+    <button class="btn btn-power" type="button" data-act="pick-check">Проверить сборку</button>
+    <button class="btn" type="button" data-act="pick-clear">Сбросить выбор</button>`;
+  const r = cmp.result;
+  if (r?.missing) h += `<h3 id="pickRes">Результат</h3><p class="verdict warn">Сначала выберите: ${r.missing.join(', ')}.</p>`;
+  else if (r) {
+    const nb = r.list.filter(x => x.status === 'bad').length, nw = r.list.filter(x => x.status === 'warn').length;
+    const [cls, text] = nb ? ['bad', `Найдено ошибок: ${nb}${nw ? `, замечаний: ${nw}` : ''}`] : nw ? ['warn', `Всё совместимо, замечаний: ${nw}`] : ['ok', 'Отличная сборка: всё совместимо и задание выполнено'];
+    h += `<h3 id="pickRes">Результат</h3><p class="verdict ${cls}">${text}</p>
+      <ul class="checks">${r.list.map(x => `<li class="${x.status}"><i>${{ ok: '✓', bad: '✕', warn: '!' }[x.status]}</i><span><strong>${x.title}</strong>${x.text}</span></li>`).join('')}</ul>`;
+  }
+  infoEl.innerHTML = h;
+}
+function pickCheck() {
+  cmp.result = runCheck();
+  renderPick(); renderInfo();
+  const el = $('#pickRes'); if (el) el.scrollIntoView({ block: 'start', behavior: REDUCED ? 'auto' : 'smooth' });
+}
+$('#taskList').innerHTML = TASKS.map(t => `<button class="task" type="button" data-task="${t.id}">
+  <span class="tt">${t.title}</span><span class="tb">${t.budget ? 'Бюджет ' + rub(t.budget) : 'Без бюджета'}</span><span class="td">${t.short}</span></button>`).join('');
+$('#taskList').addEventListener('click', e => {
+  const b = e.target.closest('[data-task]'); if (!b) return;
+  cmp.task = b.dataset.task; cmp.result = null; renderPick(); renderInfo();
+});
+$('#pickView').addEventListener('click', e => {
+  const b = e.target.closest('[data-opt]'); if (!b) return;
+  cmp.sel[b.dataset.cat] = b.dataset.opt; cmp.result = null;
+  renderPick(); renderInfo();
+  $(`#pickView [data-opt="${b.dataset.opt}"]`)?.focus({ preventScroll: true });
+});
+
 /* ---------- камера ---------- */
 let viewTween = null;
 function frameView(name, animate) {
@@ -2131,6 +2377,7 @@ renderer.setAnimationLoop(() => {
     if (k >= 1) { tweens.splice(i, 1); tw.done && tw.done(); }
   }
   if (mode === 'enc') { encFrame(dt); return; }
+  if (mode === 'pick') return; // 3D-сцена закрыта каталогом — не рисуем
   controls.update();
   if (drag?.active && drag.shown) I[drag.id].mover.position.lerp(drag.goal, 1 - Math.pow(.0005, dt));
   for (const id of CABLE_ORDER) if (I[id].live) setTube(I[id], false);

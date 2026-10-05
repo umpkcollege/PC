@@ -286,6 +286,7 @@ body.test-mode .card .step,body.test-mode .tray .hint{display:none}
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const $ = s => document.querySelector(s);
 const V3 = THREE.Vector3;
@@ -368,10 +369,10 @@ const I = {
     cat: 'part', name: 'Видеокарта', acc: 'видеокарту', kind: 'GPU · графический ускоритель',
     desc: 'Строит изображение для монитора. В ней тысячи небольших вычислительных ядер и собственная видеопамять, поэтому она быстро считает 3D-графику, видео и нейросети.',
     where: 'В верхний слот PCIe x16 с металлической оплёткой. Он ближе всего к процессору и работает на полной скорости.',
-    tip: 'Перед установкой снимают две заглушки на задней стенке корпуса — на их место встаёт кронштейн карты. Карту вставляют до щелчка защёлки и прикручивают кронштейн. Мощной карте нужен отдельный кабель питания PCIe 8-pin.',
+    tip: 'Перед установкой снимают две заглушки на задней стенке корпуса — на их место встаёт кронштейн карты. Карту вставляют до щелчка защёлки и прикручивают кронштейн. Мощной карте нужно дополнительное питание: у этой — два разъёма 6-pin на торце.',
     whereShort: 'видеокарта ставится в длинный слот PCIe x16 с металлической оплёткой',
     done: 'Видеокарта вошла в слот до щелчка, заглушки на задней стенке сняты.',
-    specs: [['Интерфейс','PCIe 4.0 x16'],['Видеопамять','8 ГБ GDDR6'],['Выходы','3 × DisplayPort, 1 × HDMI'],['Потребление','170 Вт'],['Доп. питание','8-pin']],
+    specs: [['Модель','GeForce GTX 560 Ti'],['Интерфейс','PCIe 2.0 x16'],['Видеопамять','1 ГБ GDDR5'],['Выходы','2 × DVI, mini-HDMI'],['Потребление','170 Вт'],['Доп. питание','2 × 6-pin']],
     kinds: ['pcie16'], needs: ['board'], lift: 2.6,
   },
   hdd: {
@@ -398,20 +399,20 @@ const I = {
     cat: 'cable', name: 'Кабель CPU 8-pin', acc: 'кабель CPU 8-pin', kind: 'Питание процессора · EPS',
     desc: 'Отдельная линия +12 В для процессора. Через неё идёт почти вся мощность, которую потребляет процессор.',
     where: 'В разъём CPU_PWR в верхнем левом углу платы, над радиатором VRM.',
-    tip: 'Его легко перепутать с кабелем PCIe 8-pin для видеокарты: штекеры похожи, но ключи у них разные. На кабеле процессора обычно написано CPU, на кабеле видеокарты — PCIe.',
+    tip: 'Его легко перепутать с кабелем PCIe для видеокарты: штекеры похожи, но ключи у них разные. На кабеле процессора обычно написано CPU, на кабеле видеокарты — PCIe.',
     whereShort: 'этот кабель идёт в разъём CPU_PWR в верхнем левом углу платы',
     done: 'Процессор получает питание по кабелю CPU 8-pin.',
     specs: [['Контактов','8 (4 + 4)'],['Линия','+12 В'],['Разъём на БП','CPU']],
     kinds: ['eps'], needs: ['psu','board'], lift: 2.4,
   },
   gpuPwr: {
-    cat: 'cable', name: 'Кабель PCIe 8-pin', acc: 'кабель PCIe 8-pin', kind: 'Доп. питание видеокарты',
-    desc: 'Слот PCIe даёт видеокарте не больше 75 Вт. Остальное она получает по этому кабелю — ещё до 150 Вт.',
-    where: 'В разъём на верхнем торце видеокарты.',
+    cat: 'cable', name: 'Кабель PCIe 2 × 6-pin', acc: 'кабель PCIe 2 × 6-pin', kind: 'Доп. питание видеокарты',
+    desc: 'Слот PCIe даёт видеокарте не больше 75 Вт. Остальное она получает по этому кабелю: каждый разъём 6-pin — ещё до 75 Вт.',
+    where: 'В два разъёма 6-pin на дальнем торце видеокарты.',
     tip: 'Видеокарта без этого кабеля не запустится, а плата покажет ошибку VGA.',
-    whereShort: 'этот кабель идёт в разъём на верхнем торце видеокарты',
+    whereShort: 'этот кабель идёт в разъёмы 6-pin на дальнем торце видеокарты',
     done: 'Видеокарта получает дополнительное питание.',
-    specs: [['Контактов','8 (6 + 2)'],['Мощность','до 150 Вт'],['Разъём на БП','PCIe']],
+    specs: [['Штекеры','2 × 6-pin'],['Мощность','до 150 Вт'],['Разъём на БП','PCIe']],
     kinds: ['gpuPwr'], needs: ['psu','gpu'], lift: 2.4,
   },
   hddPwr: {
@@ -785,9 +786,9 @@ function buildBoard() {
     if (armored) box(len + .15, .72, .8, MAT.steel, xc, .36, z, g);
     box(.55, 1.1, .75, MAT.latch, xc + len / 2 + .28, .55, z, g);
   };
-  pcieSlot('pcie16_1', -5.75, 3.6, 8.9, true);
-  pcieSlot('pcie1', -8.95, 7.2, 2.5, false);
-  pcieSlot('pcie16_2', -5.75, 11.4, 8.9, false);
+  pcieSlot('pcie16_1', -2.95, 3.6, 8.9, true);
+  pcieSlot('pcie1', -6.15, 7.2, 2.5, false);
+  pcieSlot('pcie16_2', -2.95, 11.4, 8.9, false);
   const finBlock = (g, x, z, w, d, h, along) => {
     box(w, h * .32, d, MAT.gun, x, h * .16, z, g);
     const n = Math.floor((along === 'z' ? d : w) / .42);
@@ -966,7 +967,7 @@ function buildSSD() {
 function buildGPU() {
   const g = new THREE.Group();
   box(24, 11, .16, MAT.pcbK, 5.8, 6.35, 0, g);
-  box(8.9, .85, .18, MAT.gold, 0, .425, 0, g);
+  const fingers = box(8.9, .85, .18, MAT.gold, 0, .425, 0, g);
   const front = canvasTex(1024, 494, (c, w, h) => {
     const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#262e35'); gr.addColorStop(1, '#171c21');
     c.fillStyle = gr; c.fillRect(0, 0, w, h);
@@ -985,8 +986,9 @@ function buildGPU() {
   box(.1, 13, 4.2, MAT.steel, -6.9, 5.6, 1.6, g);
   [2.2, 4.0, 5.8, 7.6].forEach(y => box(.2, 1.2, .55, MAT.black, -7.0, y, 1.2, g));
   box(.2, 1.5, .5, MAT.black, -7.0, 9.6, 1.2, g);
-  box(2.4, 1.0, 1.1, MAT.black, 14, 12.35, .5, g);
+  box(1.0, 3.0, .9, MAT.black, 15.8, 9.4, .45, g);
   box(16, .18, .5, MAT.rgb, 6.6, 11.72, 2.6, g);
+  g.children.forEach(c => { if (c !== fingers) c.position.x -= 2.8; });
   return g;
 }
 function buildHDD() {
@@ -1014,7 +1016,7 @@ function buildHDD() {
 const CABLE = {
   atx24:  { plug: [1.5, 1.4, 5.7], back: [0, 1, 0], r: .6,  m: MAT.sleeve, src: [1.6, 10, 20],  srcDir: [1, 0, 0], route: [[5, 10.5, 18.5], [14, 8, 13], [14.3, 6.5, 2], [13, 5.8, -3]] },
   eps:    { plug: [2.5, 1.2, 1.2], back: [0, 1, 0], r: .38, m: MAT.sleeve, src: [1.6, 10, 23.5], srcDir: [1, 0, 0], route: [[6, 12, 19], [14.5, 11, 12], [15, 10, -10], [12, 9, -16.6], [-3, 8, -16.9]] },
-  gpuPwr: { plug: [2.4, 1.2, 1.1], back: [0, 1, 0], r: .38, m: MAT.sleeve, src: [1.6, 6, 20.5],  srcDir: [1, 0, 0], route: [[5, 9, 17.5], [8.5, 15, 12], [8.4, 16.5, 7]] },
+  gpuPwr: { plug: [1.6, 3.0, 1.0], back: [1, 0, 0], r: .38, m: MAT.sleeve, src: [1.6, 6, 20.5],  srcDir: [1, 0, 0], route: [[5, 8.5, 17.5], [13.5, 10, 12], [14.6, 9.8, 6.5]] },
   hddPwr: { plug: [1.0, .7, 2.2],  back: [-1, 0, 0], r: .28, m: MAT.sleeve, src: [1.6, 6, 24],   srcDir: [1, 0, 0], route: [[4, 5, 25.5], [6, 1.6, 25.2]] },
   sataData:{ plug: [1.0, .55, 1.0], back: [1, 0, 0], r: .18, m: MAT.sataRed, src: [8.45, .4, 21.6], srcDir: [-1, 0, 0], route: [[6.5, 2, 19.5], [10.5, 3, 15.8], [14.5, 2.5, 10.5]], plug2: [9.45, .4, 21.6] },
 };
@@ -1076,12 +1078,12 @@ const SLOTS = [
   { id:'socket', kind:'socket', name:'сокет процессора', x:S.x, z:S.z, py:0, hx:2.4, hz:2.8, ty:.3, g:[5.8, .8, 6.4, .4], active:onBoard },
   ...DIMM_X.map((x, i) => ({ id:'dimm' + i, kind:'dimm', label:['A1','A2','B1','B2'][i], name:`слот памяти DIMM_${['A1','A2','B1','B2'][i]}`, x, z:DIMM_Z, py:0, hx:0, hz:7.1, ty:.3, g:[.8, 1.1, 15.2, .55], active:onBoard })),
   { id:'m2', kind:'m2', name:'слот M.2', x:-5.6, z:.6, py:0, hx:3.4, hz:0, ty:.25, g:[8.8, .7, 2.8, .35], active:onBoard },
-  { id:'pcie16_1', kind:'pcie16', primary:true, name:'основной слот PCIe x16', x:-5.75, z:3.6, py:0, hx:4.4, hz:0, ty:.35, g:[9.7, 1.3, 1.1, .65], active:onBoard },
-  { id:'pcie1', kind:'pcie1', name:'слот PCIe x1', x:-8.95, z:7.2, py:0, hx:1.2, hz:0, ty:.35, g:[3.3, 1.3, 1.1, .65], active:onBoard },
-  { id:'pcie16_2', kind:'pcie16', primary:false, name:'второй слот PCIe x16', x:-5.75, z:11.4, py:0, hx:4.4, hz:0, ty:.35, g:[9.7, 1.3, 1.1, .65], active:onBoard },
+  { id:'pcie16_1', kind:'pcie16', primary:true, name:'основной слот PCIe x16', x:-2.95, z:3.6, py:0, hx:4.4, hz:0, ty:.35, g:[9.7, 1.3, 1.1, .65], active:onBoard },
+  { id:'pcie1', kind:'pcie1', name:'слот PCIe x1', x:-6.15, z:7.2, py:0, hx:1.2, hz:0, ty:.35, g:[3.3, 1.3, 1.1, .65], active:onBoard },
+  { id:'pcie16_2', kind:'pcie16', primary:false, name:'второй слот PCIe x16', x:-2.95, z:11.4, py:0, hx:4.4, hz:0, ty:.35, g:[9.7, 1.3, 1.1, .65], active:onBoard },
   { id:'atx24', kind:'atx24', conn:true, name:'разъём ATX 24-pin', x:11.3, z:-3, py:1.6, hx:.3, hz:2.4, ty:1.6, g:[2, 2, 6.4, .9], active:onBoard },
   { id:'eps', kind:'eps', conn:true, name:'разъём CPU 8-pin', x:-8.2, z:-14.4, py:1.4, hx:.9, hz:.2, ty:1.4, g:[3, 1.9, 1.7, .8], active:onBoard },
-  { id:'gpuPwr', kind:'gpuPwr', conn:true, name:'разъём питания видеокарты', x:8.25, z:4.1, py:13.2, hx:.9, hz:.2, ty:13.2, g:[3, 1.6, 1.7, 12.7], active:() => I.gpu.installed },
+  { id:'gpuPwr', kind:'gpuPwr', conn:true, name:'разъёмы питания видеокарты', x:10.55, z:4.05, py:9.75, hx:.9, hz:.7, ty:9.75, g:[1.8, 3.6, 1.6, 9.75], active:() => I.gpu.installed },
   { id:'sataPort', kind:'sataPort', conn:true, name:'порты SATA на плате', x:11.4, z:8, py:.45, hx:.4, hz:1.5, tx:12.05, ty:.45, tz:6.5, g:[1.9, 1.4, 4.2, .5], active:onBoard },
   { id:'hddPwr', kind:'hddPwr', conn:true, name:'разъём питания на диске', x:9.45, z:25, py:.4, hx:.2, hz:.9, ty:.4, g:[1.4, 1.4, 2.8, .4], active:() => I.hdd.installed },
   { id:'hddData', kind:'hddData', conn:true, name:'разъём данных на диске', x:9.45, z:21.6, py:.4, hx:.2, hz:.4, ty:.4, g:[1.4, 1.4, 1.6, .4], active:() => I.hdd.installed },
@@ -1298,7 +1300,7 @@ const SPECIAL = {
   'gpu>pcie1': 'Слот PCIe x1 слишком короткий: у видеокарты разъём x16 — длинная гребёнка контактов. Нужен длинный слот с металлической оплёткой.',
   'ssd>pcie16': 'SSD M.2 вставляется не в слот PCIe, а в маленький разъём M.2 на самой плате — между сокетом и слотом видеокарты.',
   'ssd>pcie1': 'SSD M.2 вставляется не в слот PCIe, а в маленький разъём M.2 на самой плате — между сокетом и слотом видеокарты.',
-  'eps>gpuPwr': 'Это разъём питания видеокарты (PCIe 8-pin). Кабель процессора похож на него, но ключи у штекеров разные — он не войдёт. Разъём CPU_PWR — в верхнем левом углу платы.',
+  'eps>gpuPwr': 'Это разъём питания видеокарты (PCIe 6-pin). Кабель процессора похож на него, но ключи у штекеров разные — он не войдёт. Разъём CPU_PWR — в верхнем левом углу платы.',
   'gpuPwr>eps': 'Это разъём питания процессора (CPU 8-pin). Кабель видеокарты похож, но ключи и распиновка другие. Если вставить силой, можно сжечь плату.',
   'hddPwr>hddData': 'Это узкий разъём данных. Штекер питания SATA шире, на 15 контактов: его разъём рядом.',
   'sataData>hddPwr': 'Это разъём питания диска. Один конец кабеля данных уже в диске, второй идёт в порт SATA на плате, у её правого края.',
@@ -2817,6 +2819,76 @@ function deskFrame(dt, t) {
   routerLeds.forEach((m, i) => m.emissiveIntensity = i === 3 && DK.lan.installed && desk.on ? (Math.sin(t * 9 + i) > 0 ? 2 : .3) : 1.2);
   renderer.render(deskScene, deskCam);
 }
+
+/* ================= Модели из файлов ================= */
+// Реалистичная видеокарта (GLB, MSI GTX 560 Ti Twin Frozr II). Пока файл грузится или если он недоступен,
+// работает модель из кода. Части в файле названы по ролям: shroud, fans, fins, pipes, gpu, vram, vrm, power, pcb, bracket.
+let GPU_MODEL = null;
+const partKey = o => o.name.replace(/\d+$/, '');
+function prepGPU(scene) {
+  const root = G(); root.add(scene);
+  scene.position.x = -2.71; // центр контактов PCIe — в начало координат
+  root.updateMatrixWorld(true);
+  const fans = [];
+  scene.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; if (partKey(o) === 'fans') fans.push(o); } });
+  for (const f of fans) { // каждую крыльчатку вешаем на свою ось, чтобы она крутилась
+    const c = new THREE.Box3().setFromObject(f).getCenter(new V3());
+    const pv = G(); pv.name = 'fans'; pv.userData.fan = true; root.add(pv);
+    pv.position.copy(root.worldToLocal(c)); pv.updateMatrixWorld(true); pv.attach(f);
+  }
+  return root;
+}
+function thumbOf(obj, dir) {
+  try {
+    const tr = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    tr.setPixelRatio(1); tr.setSize(300, 200); tr.toneMapping = THREE.ACESFilmicToneMapping; tr.outputColorSpace = THREE.SRGBColorSpace;
+    const ts = new THREE.Scene(), pm = new THREE.PMREMGenerator(tr);
+    ts.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    ts.add(new THREE.HemisphereLight(0xffffff, 0x223344, .8));
+    const dl = new THREE.DirectionalLight(0xffffff, 2); dl.position.set(5, 10, 8); ts.add(dl);
+    const cam = new THREE.PerspectiveCamera(28, 1.5, .1, 500); ts.add(obj);
+    const b = new THREE.Box3().setFromObject(obj), c = b.getCenter(new V3()), sz = b.getSize(new V3()).length();
+    cam.position.copy(c).addScaledVector(new V3(...dir).normalize(), sz * 1.25); cam.lookAt(c);
+    tr.render(ts, cam); const url = tr.domElement.toDataURL('image/png');
+    pm.dispose(); tr.dispose(); tr.forceContextLoss();
+    return url;
+  } catch (e) { return null; }
+}
+function encGPUModel(m, layer) {
+  m.rotation.x = -Math.PI / 2; // плашмя: слои разлетаются вверх
+  const src = GPU_MODEL.clone(true); m.add(src); m.updateMatrixWorld(true);
+  const groups = {}, units = [];
+  src.traverse(o => { if (o.userData.fan || (o.isMesh && !o.parent.userData.fan)) units.push(o); });
+  for (const o of units) { const k = partKey(o); if (!groups[k]) { groups[k] = G(); m.add(groups[k]); groups[k].updateMatrixWorld(true); } groups[k].attach(o); }
+  m.remove(src); m.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(m.matrixWorld).invert();
+  const lb = g => { const b = new THREE.Box3(); g.traverse(o => { if (o.isMesh) { o.geometry.computeBoundingBox(); b.union(o.geometry.boundingBox.clone().applyMatrix4(inv.clone().multiply(o.matrixWorld))); } }); return b; };
+  const at = (k, fx, fy) => { const b = lb(groups[k]); return [b.min.x + (b.max.x - b.min.x) * fx, b.min.y + (b.max.y - b.min.y) * fy, b.max.z + .05]; };
+  const L = (k, name, text, ex, fx = .5, fy = .5, extra = []) => { if (groups[k]) layer(name, text, at(k, fx, fy), [[groups[k], ex], ...extra.filter(e => e[0])]); };
+  L('shroud', 'Кожух и вентиляторы', 'Кожух с двумя вентиляторами направляет воздух сквозь радиатор. Два больших вентилятора охлаждают так же, как один маленький, но крутятся медленнее и тише.', [0, 0, 9], .85, .75, [[groups.fans, [0, 0, 9]]]);
+  L('fins', 'Радиатор', 'Десятки тонких алюминиевых рёбер. Тепло от трубок расходится по ним, а вентиляторы сдувают его в корпус.', [0, 0, 5.5], .12, .8);
+  L('pipes', 'Тепловые трубки и основание', 'Медное основание прижимается к графическому процессору, а трубки разносят тепло по всему радиатору. Внутри трубок жидкость испаряется у горячего конца и конденсируется у холодного.', [0, 0, 3], .5, .1);
+  L('gpu', 'Графический процессор', 'Чип GF114 с 384 вычислительными ядрами CUDA: они параллельно считают пиксели и геометрию. Это самая горячая деталь карты.', [0, 0, 0]);
+  L('vram', 'Видеопамять GDDR5', 'Восемь микросхем вокруг процессора — всего 1 ГБ. В них хранятся текстуры и готовые кадры. У современных карт памяти в 8–16 раз больше.', [0, 0, 0], .95, .95);
+  L('vrm', 'Цепи питания VRM', 'Дроссели и транзисторы превращают 12 В от блока питания примерно в 1 В для процессора и памяти.', [0, 0, 0]);
+  L('power', 'Разъёмы питания 6-pin', 'Слот PCIe даёт карте только 75 Вт. Ещё по 75 Вт приходит через каждый из двух разъёмов 6-pin от блока питания.', [0, 0, 0]);
+  L('pcb', 'Печатная плата', 'Многослойная плата соединяет все элементы. Золотые контакты внизу — разъём PCIe x16, вырез в них — ключ.', [0, 0, 0], .3, .03);
+  L('bracket', 'Планка с разъёмами', 'Металлическая планка крепится к задней стенке корпуса. На ней выходы для мониторов: два DVI и mini-HDMI.', [0, 0, 0], .5, .9);
+}
+function useGPUModel(model) {
+  GPU_MODEL = model;
+  const g = I.gpu.group;
+  for (let i = rotors.length - 1; i >= 0; i--) if (rotors[i].owner === 'gpu') rotors.splice(i, 1);
+  [...g.children].forEach(c => g.remove(c));
+  const inst = model.clone(true); g.add(inst);
+  inst.traverse(o => { if (o.userData.fan) rotors.push({ rotor: o, owner: 'gpu' }); });
+  const url = thumbOf(model.clone(true), [.35, .45, 1]);
+  if (url) for (const img of document.querySelectorAll('[data-id="gpu"] img, [data-enc="gpu"] img')) img.src = url;
+  ENC.gpu.build = encGPUModel;
+  if (ENC.gpu.model) { if (enc.model === ENC.gpu.model) encScene.remove(enc.model.root); ENC.gpu.model = null; if (mode === 'enc' && enc.id === 'gpu') encOpen('gpu'); }
+}
+new GLTFLoader().load('models/gpu.glb', gl => useGPUModel(prepGPU(gl.scene)), undefined,
+  err => console.warn('Файл models/gpu.glb не загрузился, остаётся видеокарта из кода.', err));
 
 /* ---------- камера ---------- */
 let viewTween = null;

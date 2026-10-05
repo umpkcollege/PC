@@ -112,6 +112,35 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 .link{background:none;border:0;padding:0;color:var(--muted);font:500 13px var(--body);cursor:pointer;margin:4px 0 2px}
 .link:hover{color:var(--fg)}
 
+/* режим теста */
+.mode{display:inline-flex;padding:3px;border-radius:10px;background:var(--panel);border:1px solid var(--line)}
+.mode button{border:0;background:none;padding:6px 12px;border-radius:7px;font:600 13px var(--body);color:var(--muted);cursor:pointer}
+.mode button[aria-pressed="true"]{background:var(--panel-2);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
+.mode button:focus-visible{outline:2px solid var(--copper);outline-offset:1px}
+body.test-mode .card .step,body.test-mode .tray .hint{display:none}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0 4px}
+.stat{padding:10px 12px;border-radius:10px;background:var(--panel);border:1px solid var(--line);min-width:0}
+.stat b{display:block;font:600 22px/1.15 var(--mono);font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted)}
+.stat.bad b{color:var(--bad)}
+.errs{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:13.5px;color:var(--fg-2)}
+.errs li{padding:8px 10px;border-radius:8px;background:rgba(255,123,110,.08);border:1px solid rgba(255,123,110,.22)}
+.errs li.remark{background:var(--copper-soft);border-color:rgba(224,151,90,.3)}
+.rules{margin:0;padding-left:18px;color:var(--fg-2);display:grid;gap:4px}
+.field{display:grid;gap:6px;margin:16px 0 4px}
+.field label{font-size:13px;color:var(--muted)}
+.field input{font:15px var(--body);padding:10px 12px;border-radius:10px;border:1px solid var(--line-2);background:var(--panel);color:var(--fg);width:100%}
+.field input:focus-visible{outline:2px solid var(--copper);outline-offset:1px}
+.modal{position:absolute;inset:0;display:grid;place-items:center;background:rgba(8,11,14,.74);z-index:5;padding:16px}
+.modal-card{width:min(460px,100%);max-height:100%;overflow:auto;padding:22px;border-radius:16px;background:var(--panel);border:1px solid var(--line-2);box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.modal-card h2{font:700 20px/1.25 var(--display);margin:0 0 4px}
+.modal-card h3{font:600 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--copper);margin:18px 0 6px}
+.modal-card .who{color:var(--muted);margin:0}
+.grade-row{display:flex;align-items:center;gap:18px;margin:14px 0 4px}
+.grade{font:700 68px/1 var(--display);color:var(--copper);min-width:56px}
+.grade.g5{color:var(--ok)} .grade.g2{color:var(--bad)}
+.modal-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:18px}
+
 @media (max-width: 980px){
   html,body{height:auto}
   body{overflow:auto}
@@ -141,8 +170,12 @@ body.dragging,body.dragging *{cursor:grabbing!important}
       </svg>
       <div>
         <h1>Мастерская ПК</h1>
-        <p>Урок 1 · Собираем системный блок</p>
+        <p id="subtitle">Урок 1 · Собираем системный блок</p>
       </div>
+    </div>
+    <div class="mode" role="group" aria-label="Режим">
+      <button type="button" data-mode="learn" aria-pressed="true">Обучение</button>
+      <button type="button" data-mode="test" aria-pressed="false">Тест</button>
     </div>
     <div class="progress" aria-label="Прогресс сборки">
       <div class="segs" id="segs"></div>
@@ -170,6 +203,7 @@ body.dragging,body.dragging *{cursor:grabbing!important}
     <div id="loading" class="loading">Загружаем 3D-сцену…</div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <div id="tip" class="tip" hidden></div>
+    <div id="result" class="modal" role="dialog" aria-modal="true" aria-labelledby="resultTitle" hidden></div>
     <div class="stage-foot">
       <span>Вращать — тянуть по пустому месту · Масштаб — колесо мыши · Нажмите на деталь, чтобы узнать, что это</span>
       <div class="views">
@@ -1071,6 +1105,13 @@ const allCards = () => [...cardsEl.children, ...cablesEl.children];
 $('#segs').innerHTML = ORDER.map(id => `<span class="seg ${I[id].cat === 'cable' ? 'cable' : ''}" data-id="${id}" title="${I[id].name}"></span>`).join('');
 
 let selected = null, hoverPart = null, powered = false, busyPower = false, ledFault = null, spinTarget = 0, fanSpeed = 0;
+let mode = 'learn';
+const test = { active: false, done: false, name: '', t0: 0, tEnd: 0, errors: [], remarks: [] };
+const isTest = () => mode === 'test';
+const inTest = () => mode === 'test' && test.active;
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmtTime = ms => { const s = Math.floor(ms / 1000); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+function mistake(text) { if (!inTest()) return; test.errors.push(text); renderInfo(); }
 let toastTimer;
 function toast(text, kind = 'info', ms = 6500) {
   toastEl.className = 'toast ' + kind; toastEl.textContent = text; toastEl.hidden = false;
@@ -1088,7 +1129,40 @@ function slotLabel(id) {
 }
 const specsHTML = rows => `<dl class="specs">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
 const tagsHTML = ids => `<div class="legend">${ids.map(k => `<button class="tag" type="button" data-part="${k}">${PARTS[k].name}</button>`).join('')}</div>`;
+function renderTestInfo() {
+  if (!test.active) {
+    infoEl.innerHTML = `<div class="kind">Режим теста</div><h2>Соберите компьютер сами</h2>
+      <p>Подсказок не будет: места установки не мигают, описаний деталей нет, карточки перемешаны. Соберите системный блок полностью и включите его.</p>
+      <h3>Что считается ошибкой</h3>
+      <ul class="rules"><li>деталь или кабель не в том месте;</li><li>деталь, которую ставят позже, — раньше времени;</li><li>включение незавершённой сборки.</li></ul>
+      <h3>Замечания</h3>
+      <p>Сборка заработает, но неоптимально: например, память не в слотах A2 + B2. Замечание считается как ошибка.</p>
+      <div class="field"><label for="studentName">Имя и группа</label>
+        <input id="studentName" type="text" autocomplete="off" maxlength="60" placeholder="Например: Петров А., группа ИС-21" value="${esc(test.name)}"></div>
+      <h3>Оценка</h3>${specsHTML([['0–1 ошибка', '5'], ['2–3 ошибки', '4'], ['4–6 ошибок', '3'], ['7 и больше', '2']])}
+      <button class="btn btn-power" type="button" data-act="start-test">Начать тест</button>`;
+    return;
+  }
+  const n = installedCount(), e = test.errors.length;
+  let sel = '<p>Перетаскивайте детали и кабели в корпус. Когда всё будет на месте, нажмите «Включить».</p>';
+  if (selected?.type === 'comp') {
+    const c = I[selected.id];
+    sel = `<h3>Выбрано</h3><p>${c.name} — ${c.installed ? (c.cat === 'cable' ? 'подключено' : 'установлено') : 'на столе'}.</p>
+      ${c.installed ? `<button class="btn" type="button" data-act="remove">${c.cat === 'cable' ? 'Отключить' : 'Снять'}</button>` : ''}`;
+  }
+  infoEl.innerHTML = `<div class="kind">Режим теста</div><h2>Идёт тест</h2>
+    ${test.name ? `<p>${esc(test.name)}</p>` : ''}
+    <div class="stats">
+      <div class="stat"><b id="testTime">${fmtTime(performance.now() - test.t0)}</b><span>время</span></div>
+      <div class="stat ${e ? 'bad' : ''}"><b>${e}</b><span>ошибок</span></div>
+      <div class="stat"><b>${n}/${ORDER.length}</b><span>собрано</span></div>
+    </div>
+    ${sel}
+    ${e ? `<h3>Ошибки</h3><ul class="errs">${test.errors.slice(-6).reverse().map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
+    <button class="btn" type="button" data-act="abort-test">Прервать тест</button>`;
+}
 function renderInfo() {
+  if (isTest()) { renderTestInfo(); return; }
   let h = '';
   if (!selected) {
     h = `<div class="kind">${CASE_INFO.kind}</div><h2>${CASE_INFO.name}</h2><p>${CASE_INFO.desc}</p>
@@ -1119,9 +1193,10 @@ function updateUI() {
   for (const el of allCards()) {
     const id = el.dataset.id, c = I[id], miss = !c.installed && missingNeeds(id).length > 0;
     el.classList.toggle('installed', c.installed);
-    el.classList.toggle('locked', miss);
     el.classList.toggle('selected', selected?.type === 'comp' && selected.id === id);
-    el.querySelector('.state').textContent = c.installed ? (c.cat === 'cable' ? 'Подключено' : 'Установлено') : miss ? 'Пока рано' : (c.cat === 'cable' ? 'Не подключено' : 'На столе');
+    el.classList.toggle('locked', miss || (isTest() && !c.installed));
+    el.querySelector('.state').textContent = c.installed ? (c.cat === 'cable' ? 'Подключено' : 'Установлено')
+      : isTest() ? '—' : miss ? 'Пока рано' : (c.cat === 'cable' ? 'Не подключено' : 'На столе');
   }
   for (const el of $('#segs').children) el.classList.toggle('done', I[el.dataset.id].installed);
   const n = installedCount();
@@ -1136,6 +1211,7 @@ function updateUI() {
 }
 function refreshHints() {
   for (const s of SLOTS) glow[s.id].hint = false;
+  if (isTest()) return;
   const id = drag?.active ? drag.id : (selected?.type === 'comp' ? selected.id : null);
   if (id && !I[id].installed && !missingNeeds(id).length) { const s = defaultSlot(id); if (s?.active()) glow[s.id].hint = true; }
 }
@@ -1234,6 +1310,7 @@ function uninstall(id) {
 function blockedStart(id) {
   const miss = missingNeeds(id);
   if (!miss.length) return false;
+  if (inTest()) { mistake(`${I[id].name} — раньше времени`); toast('Ошибка: эту деталь ставят позже, после других.', 'bad'); return true; }
   toast(I[id].needMsg && miss.includes('cpu') ? I[id].needMsg : `Сначала установите ${needText(miss)}.`, 'bad');
   return true;
 }
@@ -1247,6 +1324,7 @@ function autoInstall(id) {
 }
 function afterInstall(id, v) {
   const it = I[id];
+  if (inTest()) { toast(`${it.cat === 'cable' ? 'Подключено' : 'Установлено'}: ${lc(it.name)}.`, 'ok', 2500); return; }
   const msg = it.done || `Модуль памяти защёлкнулся в слоте ${it.slot.label}.`;
   if (installedCount() === ORDER.length) toast(`${msg} Сборка закончена — нажмите «Включить», чтобы проверить её.`, 'ok', 8000);
   else toast(v.tip ? `${msg} ${v.tip}` : msg, v.tip ? 'info' : 'ok', v.tip ? 9000 : 6000);
@@ -1266,6 +1344,7 @@ function onCardDown(e) {
   const card = e.target.closest('.card'); if (!card || e.button > 0) return;
   const id = card.dataset.id;
   if (I[id].installed || I[id].busy || powered || busyPower) return;
+  if (isTest() && !test.active) { toast(test.done ? 'Тест завершён. Чтобы пройти его снова, нажмите «Пройти ещё раз».' : 'Чтобы начать, нажмите «Начать тест» справа.', 'info'); return; }
   drag = { id, card, sx: e.clientX, sy: e.clientY, active: false, slot: null, verdict: null, goal: new V3(), shown: false };
 }
 cardsEl.addEventListener('pointerdown', onCardDown);
@@ -1305,14 +1384,14 @@ function updateDrag(e) {
   if (best && drag.verdict.ok) {
     const t = target(drag.id, best);
     drag.goal.copy(t).add(isCable ? new V3(...it.cable.spec.back).multiplyScalar(1.6) : new V3(0, it.lift, 0));
-    glow[best.id].hover = 'ok';
+    glow[best.id].hover = isTest() ? 'near' : 'ok';
   } else {
     drag.goal.set(F.x, home.ty + it.lift + .4, F.z);
-    if (best) glow[best.id].hover = 'bad';
+    if (best) glow[best.id].hover = isTest() ? 'near' : 'bad';
   }
   const rp = bp || F;
   ring.position.set(rp.x, (best ? best.py : home.py) + .06, rp.z); ring.visible = true;
-  ring.material.color.copy(best ? (drag.verdict.ok ? GREEN : RED) : COPPER);
+  ring.material.color.copy(!best || isTest() ? COPPER : drag.verdict.ok ? GREEN : RED);
   if (!drag.shown) { mv.position.copy(drag.goal); it.group.visible = true; drag.shown = true; it.live = isCable; }
 }
 function finishDragUI() {
@@ -1333,7 +1412,8 @@ function endDrag(e) {
   if (inside && s && v.ok) { install(id, s, I[id].mover.position.clone()); afterInstall(id, v); }
   else {
     dropBack(id);
-    if (inside && s) { toast(v.msg, 'bad', 8000); flash(s, RED); }
+    if (inside && s && inTest()) { mistake(`${I[id].name} → ${s.name}`); toast(`Ошибка: это ${s.name}, сюда не подходит.`, 'bad'); flash(s, RED); }
+    else if (inside && s) { toast(v.msg, 'bad', 8000); flash(s, RED); }
     else if (inside) toast(I[id].cat === 'cable' ? 'Поднесите штекер к мигающему разъёму. Когда рамка станет зелёной, отпустите.' : 'Поднесите деталь к мигающему месту. Когда рамка станет зелёной, отпустите.', 'info');
   }
   drag.active = false; refreshHints();
@@ -1353,7 +1433,7 @@ function pick(e) {
     ...ORDER.filter(id => I[id].installed).map(id => I[id].group)];
   const hit = raycaster.intersectObjects(targets, true).find(h => h.object.visible);
   for (let o = hit?.object; o; o = o.parent) {
-    if (o.userData.part) return { type: 'part', id: o.userData.part };
+    if (o.userData.part) return isTest() ? null : { type: 'part', id: o.userData.part };
     if (o.userData.comp) return { type: 'comp', id: o.userData.comp };
   }
   return null;
@@ -1385,7 +1465,10 @@ infoEl.addEventListener('click', e => {
   else if ('back' in b.dataset) select(null);
   else if (b.dataset.act === 'install') autoInstall(selected.id);
   else if (b.dataset.act === 'remove') uninstall(selected.id);
+  else if (b.dataset.act === 'start-test') startTest();
+  else if (b.dataset.act === 'abort-test') { test.active = false; test.done = false; resetBuild(); toast('Тест прерван.', 'info', 3000); }
 });
+infoEl.addEventListener('input', e => { if (e.target.id === 'studentName') test.name = e.target.value.trim(); });
 
 /* ---------- включение и самотест POST ---------- */
 function setLed(n, on) {
@@ -1397,6 +1480,9 @@ const allLeds = on => Object.keys(LED).forEach(n => setLed(n, on));
 async function pressPower() {
   if (busyPower) return;
   if (powered) { powered = false; spinTarget = 0; toast('Компьютер выключен.', 'info', 3000); updateUI(); return; }
+  if (isTest() && !test.active) { toast('Чтобы начать, нажмите «Начать тест» справа.', 'info'); return; }
+  const complete = installedCount() === ORDER.length;
+  if (inTest() && !complete) mistake(`Включение незавершённой сборки (${installedCount()} из ${ORDER.length})`);
   if (!I.psu.installed) { toast('Кнопка нажата, но ничего не происходит: в корпусе нет блока питания.', 'bad'); return; }
   if (!I.board.installed) { toast('Блок питания есть, но сигнал включения подать некому: материнская плата не установлена.', 'bad'); return; }
   if (!I.atx24.installed) { toast('Тишина: плата не получает питание. Подключите кабель ATX 24-pin от блока питания.', 'bad'); return; }
@@ -1420,6 +1506,7 @@ async function pressPower() {
     setLed(n, false);
   }
   powered = true; busyPower = false;
+  if (inTest() && complete) { updateUI(); finishTest(); return; }
   const notes = [];
   if (!(I.ram.installed && I.ram2.installed)) notes.push('Память работает в одноканальном режиме: добавьте второй модуль.');
   else if (!(I.ram.slot.label[0] !== I.ram2.slot.label[0])) notes.push('Оба модуля памяти в одном канале — переставьте их в A2 и B2.');
@@ -1429,14 +1516,97 @@ async function pressPower() {
   updateUI();
 }
 $('#powerBtn').addEventListener('click', pressPower);
-$('#resetBtn').addEventListener('click', () => {
+function resetBuild() {
   powered = false; busyPower = false; spinTarget = 0; ledFault = null; allLeds(false);
   tweens.length = 0;
   for (const id of ORDER) { const it = I[id]; Object.assign(it, { installed: false, slot: null, busy: false, live: false }); it.group.visible = false; }
   SLOTS.forEach(s => s.occ = null);
   frameView('case'); select(null);
-  toast('Корпус пустой. Начните с материнской платы.', 'info', 3500);
+}
+$('#resetBtn').addEventListener('click', () => {
+  resetBuild();
+  toast(isTest() ? 'Корпус пустой.' : 'Корпус пустой. Начните с материнской платы.', 'info', 3500);
 });
+
+/* ---------- режим теста ---------- */
+const resultEl = $('#result');
+function shuffleCards(on) {
+  for (const list of [cardsEl, cablesEl]) {
+    const n = list.children.length, order = [...Array(n).keys()].sort(() => Math.random() - .5);
+    [...list.children].forEach((el, i) => el.style.order = on ? order[i] : '');
+  }
+}
+function setMode(m) {
+  if (m === mode) return;
+  mode = m;
+  document.body.classList.toggle('test-mode', m === 'test');
+  document.querySelectorAll('.mode button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
+  $('#subtitle').textContent = m === 'test' ? 'Тест · Сборка системного блока' : 'Урок 1 · Собираем системный блок';
+  test.active = false; test.done = false; resultEl.hidden = true;
+  shuffleCards(false); hoverPart = null; tipEl.hidden = true;
+  if (m === 'test') { resetBuild(); toast('Режим теста. Введите имя справа и нажмите «Начать тест».', 'info'); }
+  else select(null);
+}
+document.querySelectorAll('.mode button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+function startTest() {
+  const inp = $('#studentName'); if (inp) test.name = inp.value.trim();
+  resetBuild();
+  Object.assign(test, { active: true, done: false, t0: performance.now(), tEnd: 0, errors: [], remarks: [] });
+  resultEl.hidden = true;
+  shuffleCards(true); select(null);
+  toast('Тест начался, время пошло. Удачи!', 'info', 3500);
+}
+function gradeFor(score) { return score <= 1 ? 5 : score <= 3 ? 4 : score <= 6 ? 3 : 2; }
+function finishTest() {
+  test.active = false; test.done = true; test.tEnd = performance.now();
+  test.remarks = [];
+  const pair = [I.ram.slot.label, I.ram2.slot.label].sort().join('+');
+  if (pair !== 'A2+B2') test.remarks.push(I.ram.slot.label[0] === I.ram2.slot.label[0]
+    ? 'Оба модуля памяти в одном канале — память работает в одноканальном режиме.'
+    : `Модули памяти в слотах ${pair.replace('+', ' и ')}, а рекомендованы A2 и B2.`);
+  if (!I.gpu.slot.primary) test.remarks.push('Видеокарта во втором слоте PCIe x16 — он работает в режиме x4.');
+  const score = test.errors.length + test.remarks.length, grade = gradeFor(score);
+  const time = fmtTime(test.tEnd - test.t0);
+  const list = (arr, cls = '') => `<ul class="errs">${arr.map(t => `<li class="${cls}">${esc(t)}</li>`).join('')}</ul>`;
+  resultEl.innerHTML = `<div class="modal-card">
+    <h2 id="resultTitle">Тест пройден</h2>
+    <p class="who">${test.name ? esc(test.name) : 'Имя не указано'} · ${new Date().toLocaleDateString('ru-RU')}</p>
+    <div class="grade-row">
+      <div class="grade g${grade}">${grade}</div>
+      <div class="stats" style="flex:1;margin:0;grid-template-columns:repeat(2,minmax(0,1fr))">
+        <div class="stat"><b>${time}</b><span>время</span></div>
+        <div class="stat ${score ? 'bad' : ''}"><b>${test.errors.length}${test.remarks.length ? ' + ' + test.remarks.length : ''}</b><span>${test.remarks.length ? 'ошибок + замечаний' : 'ошибок'}</span></div>
+      </div>
+    </div>
+    ${test.errors.length ? `<h3>Ошибки</h3>${list(test.errors)}` : '<h3>Ошибки</h3><p>Ни одной ошибки. Отличная сборка!</p>'}
+    ${test.remarks.length ? `<h3>Замечания</h3>${list(test.remarks, 'remark')}` : ''}
+    <div class="modal-actions">
+      <button class="btn btn-power" type="button" data-act="copy">Скопировать результат</button>
+      <button class="btn" type="button" data-act="again">Пройти ещё раз</button>
+      <button class="btn" type="button" data-act="learn">К обучению</button>
+    </div>
+  </div>`;
+  test.text = [`Мастерская ПК — тест «Сборка системного блока»`, `Студент: ${test.name || 'не указан'}`, `Дата: ${new Date().toLocaleDateString('ru-RU')}`,
+    `Оценка: ${grade}`, `Время: ${time}`, `Ошибок: ${test.errors.length}, замечаний: ${test.remarks.length}`,
+    ...test.errors.map(t => `— ошибка: ${t}`), ...test.remarks.map(t => `— замечание: ${t}`)].join('\n');
+  resultEl.hidden = false;
+  resultEl.querySelector('[data-act="copy"]').focus();
+  renderInfo();
+}
+resultEl.addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.act === 'again') { resultEl.hidden = true; test.done = false; resetBuild(); toast('Введите имя и нажмите «Начать тест».', 'info'); }
+  else if (b.dataset.act === 'learn') setMode('learn');
+  else if (b.dataset.act === 'copy') {
+    try { await navigator.clipboard.writeText(test.text); b.textContent = 'Скопировано'; }
+    catch (err) {
+      const pre = document.createElement('textarea'); pre.value = test.text; pre.readOnly = true; pre.rows = 6;
+      pre.style.cssText = 'width:100%;margin-top:12px;font:12px var(--mono);background:var(--bg);color:var(--fg);border:1px solid var(--line-2);border-radius:8px;padding:8px';
+      b.closest('.modal-card').append(pre); pre.select(); b.textContent = 'Выделите и скопируйте текст ниже';
+    }
+  }
+});
+setInterval(() => { if (inTest()) { const el = $('#testTime'); if (el) el.textContent = fmtTime(performance.now() - test.t0); } }, 500);
 
 /* ---------- камера ---------- */
 let viewTween = null;
@@ -1484,6 +1654,7 @@ renderer.setAnimationLoop(() => {
     const G = glow[s.id]; let op = 0, col = COPPER;
     if (G.hover === 'ok') { op = .5; col = GREEN; }
     else if (G.hover === 'bad') { op = .42; col = RED; }
+    else if (G.hover === 'near') op = .45;
     else if (G.hint) op = .14 + .14 * (.5 + .5 * Math.sin(t * 4.5));
     if (G.flashT >= 0) {
       const k = (now - G.flashT) / 1000;

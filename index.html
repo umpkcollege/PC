@@ -141,6 +141,33 @@ body.test-mode .card .step,body.test-mode .tray .hint{display:none}
 .grade.g5{color:var(--ok)} .grade.g2{color:var(--bad)}
 .modal-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:18px}
 
+/* энциклопедия */
+.enc-card{cursor:pointer;touch-action:auto}
+.enc-card .kindline{font-size:11.5px;color:var(--muted);line-height:1.3}
+.elabels{position:absolute;inset:0;pointer-events:none;z-index:2;overflow:hidden}
+.elabel{position:absolute;left:0;top:0;pointer-events:auto;display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 3px;border-radius:999px;
+  background:rgba(14,19,23,.86);border:1px solid var(--line-2);font:500 12px var(--body);color:var(--fg);cursor:pointer;white-space:nowrap}
+.elabel b{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--copper);color:var(--copper-ink);font:700 11px var(--mono)}
+.elabel.on{border-color:var(--copper);background:rgba(44,30,18,.95);z-index:1}
+.elabel:focus-visible{outline:2px solid var(--copper);outline-offset:2px}
+.enc-controls{position:absolute;left:12px;right:12px;bottom:10px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:9px 12px;
+  border-radius:12px;background:rgba(17,24,29,.92);border:1px solid var(--line-2);z-index:3}
+.enc-controls .range{display:flex;align-items:center;gap:10px;flex:1 1 240px;min-width:0}
+.enc-controls .range span{font:500 12px var(--body);color:var(--muted);white-space:nowrap}
+.enc-controls input[type=range]{flex:1;min-width:80px;accent-color:var(--copper)}
+.enc-controls .chip-btn[aria-pressed="true"]{border-color:var(--copper);color:var(--copper)}
+.layers{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.layers button{display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;align-items:start;text-align:left;width:100%;padding:9px 10px;border-radius:10px;
+  border:1px solid var(--line);background:var(--panel);cursor:pointer}
+.layers button:hover,.layers button.on{border-color:var(--copper)}
+.layers button:focus-visible{outline:2px solid var(--copper);outline-offset:2px}
+.layers b{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--copper-soft);color:var(--copper);font:700 11px var(--mono)}
+.layers button.on b{background:var(--copper);color:var(--copper-ink)}
+.layers .lt strong{display:block;font:600 14px/1.3 var(--body)}
+.layers .ld{display:block;font-size:13px;color:var(--fg-2);line-height:1.45;margin-top:2px}
+.choose{margin:0;padding-left:18px;color:var(--fg-2);display:grid;gap:5px}
+.fact{padding:12px 14px;border-radius:10px;background:var(--copper-soft);border:1px solid rgba(224,151,90,.3);color:var(--fg)!important}
+
 @media (max-width: 980px){
   html,body{height:auto}
   body{overflow:auto}
@@ -176,6 +203,7 @@ body.test-mode .card .step,body.test-mode .tray .hint{display:none}
     <div class="mode" role="group" aria-label="Режим">
       <button type="button" data-mode="learn" aria-pressed="true">Обучение</button>
       <button type="button" data-mode="test" aria-pressed="false">Тест</button>
+      <button type="button" data-mode="enc" aria-pressed="false">Энциклопедия</button>
     </div>
     <div class="progress" aria-label="Прогресс сборки">
       <div class="segs" id="segs"></div>
@@ -191,12 +219,19 @@ body.test-mode .card .step,body.test-mode .tray .hint{display:none}
   </header>
 
   <aside class="tray">
+   <div id="encTray" hidden>
+    <h2 class="eyebrow">Детали компьютера</h2>
+    <p class="hint">Выберите деталь. Вращайте её мышью, а ползунком под сценой разберите на части.</p>
+    <div id="encList" class="cards"></div>
+   </div>
+   <div id="buildTray">
     <h2 class="eyebrow">Комплектующие</h2>
     <p class="hint">Перетащите деталь в корпус. Нажмите на карточку, чтобы прочитать о детали: нужное место начнёт мигать.</p>
     <div id="cards" class="cards"></div>
     <h2 class="eyebrow second">Кабели</h2>
     <p class="hint">Перетащите штекер к разъёму. Кабели питания идут от блока питания.</p>
     <div id="cables" class="cards"></div>
+   </div>
   </aside>
 
   <main class="stage" id="stage">
@@ -204,6 +239,13 @@ body.test-mode .card .step,body.test-mode .tray .hint{display:none}
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <div id="tip" class="tip" hidden></div>
     <div id="result" class="modal" role="dialog" aria-modal="true" aria-labelledby="resultTitle" hidden></div>
+    <div id="encLabels" class="elabels" hidden></div>
+    <div id="encControls" class="enc-controls" hidden>
+      <div class="range"><span>Собрано</span><input id="explode" type="range" min="0" max="100" value="0" aria-label="Разобрать деталь на части"><span>Разобрано</span></div>
+      <button id="encToggle" class="chip-btn" type="button">Разобрать</button>
+      <button id="encLabelsBtn" class="chip-btn" type="button" aria-pressed="true">Подписи</button>
+      <button id="encSpin" class="chip-btn" type="button" aria-pressed="true">Вращение</button>
+    </div>
     <div class="stage-foot">
       <span>Вращать — тянуть по пустому месту · Масштаб — колесо мыши · Нажмите на деталь, чтобы узнать, что это</span>
       <div class="views">
@@ -1162,6 +1204,7 @@ function renderTestInfo() {
     <button class="btn" type="button" data-act="abort-test">Прервать тест</button>`;
 }
 function renderInfo() {
+  if (mode === 'enc') { renderEncInfo(); return; }
   if (isTest()) { renderTestInfo(); return; }
   let h = '';
   if (!selected) {
@@ -1441,6 +1484,13 @@ function pick(e) {
 let downAt = null;
 canvas.addEventListener('pointerdown', e => { downAt = { x: e.clientX, y: e.clientY }; });
 canvas.addEventListener('pointermove', e => {
+  if (mode === 'enc') {
+    if (e.buttons) return;
+    const i = encPick(e);
+    if (i !== enc.hover) { enc.hover = i; paintEnc(); }
+    canvas.classList.toggle('hot', i !== null);
+    return;
+  }
   if (drag?.active || e.buttons) return;
   const p = pick(e);
   const newHover = p?.type === 'part' ? p.id : null;
@@ -1453,15 +1503,23 @@ canvas.addEventListener('pointermove', e => {
     tipEl.hidden = false;
   } else tipEl.hidden = true;
 });
-canvas.addEventListener('pointerleave', () => { tipEl.hidden = true; if (hoverPart) { hoverPart = null; paintParts(); } });
+canvas.addEventListener('pointerleave', () => {
+  tipEl.hidden = true; if (hoverPart) { hoverPart = null; paintParts(); }
+  if (enc.hover !== null) { enc.hover = null; paintEnc(); }
+});
 canvas.addEventListener('pointerup', e => {
+  if (mode === 'enc') {
+    if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 6) { const i = encPick(e); if (i !== null) encSelect(i); }
+    downAt = null; return;
+  }
   if (drag || !downAt) return;
   if (Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 6) select(pick(e));
   downAt = null;
 });
 infoEl.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.part) select({ type: 'part', id: b.dataset.part });
+  if (b.dataset.layer !== undefined) encSelect(+b.dataset.layer);
+  else if (b.dataset.part) select({ type: 'part', id: b.dataset.part });
   else if ('back' in b.dataset) select(null);
   else if (b.dataset.act === 'install') autoInstall(selected.id);
   else if (b.dataset.act === 'remove') uninstall(selected.id);
@@ -1539,12 +1597,19 @@ function shuffleCards(on) {
 function setMode(m) {
   if (m === mode) return;
   mode = m;
+  const encOn = m === 'enc';
   document.body.classList.toggle('test-mode', m === 'test');
+  document.body.classList.toggle('enc-mode', encOn);
   document.querySelectorAll('.mode button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
-  $('#subtitle').textContent = m === 'test' ? 'Тест · Сборка системного блока' : 'Урок 1 · Собираем системный блок';
+  $('#subtitle').textContent = { learn: 'Урок 1 · Собираем системный блок', test: 'Тест · Сборка системного блока', enc: 'Энциклопедия · Из чего состоит компьютер' }[m];
+  $('#buildTray').hidden = encOn; $('#encTray').hidden = !encOn;
+  $('.progress').hidden = encOn; $('.actions').hidden = encOn; $('.stage-foot').hidden = encOn;
+  $('#encControls').hidden = !encOn; $('#encLabels').hidden = !encOn;
+  controls.enabled = !encOn; encControls.enabled = encOn;
   test.active = false; test.done = false; resultEl.hidden = true;
-  shuffleCards(false); hoverPart = null; tipEl.hidden = true;
+  shuffleCards(false); hoverPart = null; tipEl.hidden = true; toastEl.hidden = true; canvas.classList.remove('hot');
   if (m === 'test') { resetBuild(); toast('Режим теста. Введите имя справа и нажмите «Начать тест».', 'info'); }
+  else if (encOn) encOpen(enc.id || 'gpu');
   else select(null);
 }
 document.querySelectorAll('.mode button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
@@ -1608,6 +1673,430 @@ resultEl.addEventListener('click', async e => {
 });
 setInterval(() => { if (inTest()) { const el = $('#testTime'); if (el) el.textContent = fmtTime(performance.now() - test.t0); } }, 500);
 
+/* ================= Энциклопедия ================= */
+// Отдельная сцена: одна деталь крупно, разбирается на слои. Каждый слой — группы с вектором смещения при разборке.
+const G = () => new THREE.Group();
+const encScene = new THREE.Scene();
+encScene.background = scene.background; encScene.environment = scene.environment;
+encScene.add(new THREE.HemisphereLight(0xc8dceb, 0x0e1317, .6));
+{
+  const k = new THREE.DirectionalLight(0xfff3e6, 2.3); k.position.set(-14, 34, 20); k.castShadow = true;
+  k.shadow.mapSize.set(2048, 2048); Object.assign(k.shadow.camera, { left: -24, right: 24, top: 24, bottom: -24, near: 1, far: 100 });
+  k.shadow.bias = -.0004; k.shadow.normalBias = .02; encScene.add(k);
+  const r = new THREE.DirectionalLight(0x8fb8ff, .9); r.position.set(22, 14, -26); encScene.add(r);
+  const floorTex = canvasTex(512, 512, (c, w, h) => {
+    const g = c.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, w / 2);
+    g.addColorStop(0, '#25313a'); g.addColorStop(.6, '#151c21'); g.addColorStop(1, '#11181d');
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+    c.strokeStyle = 'rgba(224,151,90,.16)'; c.lineWidth = 2;
+    for (const rr of [.22, .3]) { c.beginPath(); c.arc(w / 2, h / 2, w * rr, 0, Math.PI * 2); c.stroke(); }
+  });
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(40, 64), mat({ map: floorTex, roughness: .9 }));
+  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; encScene.add(floor);
+}
+const encCam = new THREE.PerspectiveCamera(35, 1, .1, 400);
+const encControls = new OrbitControls(encCam, canvas);
+Object.assign(encControls, { enableDamping: true, enabled: false, autoRotate: !REDUCED, autoRotateSpeed: 1.1, maxPolarAngle: Math.PI * .495 });
+encControls.addEventListener('start', () => { encControls.autoRotate = false; updateEncButtons(); });
+
+function chipTex(text, sub, bg = '#23292e') {
+  return canvasTex(256, 256, (c, w, h) => {
+    c.fillStyle = bg; c.fillRect(0, 0, w, h);
+    c.fillStyle = 'rgba(255,255,255,.75)'; c.font = `600 34px ${MONO}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(text, w / 2, h / 2 - 18); c.font = `500 22px ${MONO}`; c.fillStyle = 'rgba(255,255,255,.45)'; c.fillText(sub, w / 2, h / 2 + 22);
+    c.beginPath(); c.arc(28, 28, 8, 0, Math.PI * 2); c.fill();
+  });
+}
+function chip(w, h, d, tex, x, y, z, parent) { // микросхема с маркировкой сверху
+  const s = mat({ color: 0x23292e, roughness: .45 }), t = mat({ map: tex, roughness: .45 });
+  const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [s, s, t, s, s, s]); o.position.set(x, y, z); parent.add(o); return o;
+}
+
+function encGPU(m, layer) {
+  m.rotation.x = -Math.PI / 2; // кладём карту плашмя: разборка идёт вверх
+  const pcb = G();
+  const pcbTex = canvasTex(1024, 470, (c, w, h) => {
+    c.fillStyle = '#14191d'; c.fillRect(0, 0, w, h);
+    const r = rng(5); c.strokeStyle = 'rgba(224,151,90,.2)'; c.lineWidth = 2;
+    for (let i = 0; i < 170; i++) { let x = r() * w, y = r() * h; c.beginPath(); c.moveTo(x, y); for (let s = 0; s < 3; s++) { const a = ((r() * 8) | 0) * Math.PI / 4, l = 20 + r() * 90; x += Math.cos(a) * l; y += Math.sin(a) * l; c.lineTo(x, y); } c.stroke(); }
+  });
+  const pk = MAT.pcbK, pm = mat({ map: pcbTex, roughness: .6 });
+  const p = new THREE.Mesh(new THREE.BoxGeometry(24, 11, .16), [pk, pk, pk, pk, pm, pk]); p.position.set(5.8, 6.35, 0); pcb.add(p);
+  box(8.9, .85, .18, MAT.gold, 0, .425, 0, pcb);
+  box(.1, 13, 4.2, MAT.steel, -6.9, 5.6, 1.6, pcb);
+  [2.2, 4.0, 5.8, 7.6].forEach(y => box(.2, 1.2, .55, MAT.black, -7.0, y, 1.2, pcb));
+  box(2.4, 1.0, 1.1, MAT.black, 14, 12.35, .5, pcb);
+  for (let i = 0; i < 10; i++) cyl(.22, .5, MAT.dark, 9.6 + i * .7, 2.2, .4, pcb, 10).rotation.x = Math.PI / 2;
+  const die = G();
+  box(4.6, 4.6, .14, MAT.pcbG, 4, 6.3, .15, die);
+  box(2.6, 2.6, .1, mat({ color: 0x2b3d52, metalness: .7, roughness: .18 }), 4, 6.3, .27, die);
+  const vram = G(), vt = chipTex('GDDR6', '1 GB');
+  [[.3, 9.7], [2.2, 9.7], [5.8, 9.7], [7.7, 9.7], [.3, 2.9], [2.2, 2.9], [5.8, 2.9], [7.7, 2.9]].forEach(([x, y]) => {
+    const o = chip(1.4, .12, 1.2, vt, x, y, .14, vram); o.rotation.x = Math.PI / 2;
+  });
+  const vrm = G();
+  for (let i = 0; i < 6; i++) { box(1.0, 1.0, .7, MAT.gun, 11 + i * 1.3, 8.4, .43, vrm); box(.7, .55, .15, MAT.black, 11 + i * 1.3, 6.9, .16, vrm); }
+  const hs = G();
+  box(5, 5, .3, MAT.copper, 4, 6.3, .5, hs);
+  for (const y of [4.6, 5.7, 6.9, 8.0]) cyl(.28, 21, MAT.copper, 6.6, y, .75, hs, 12).rotation.z = Math.PI / 2;
+  const fins = new THREE.InstancedMesh(new THREE.BoxGeometry(.05, 9.6, 2.2), MAT.alu, 78), m4 = new THREE.Matrix4();
+  for (let i = 0; i < 78; i++) { m4.makeTranslation(-4 + i * .29, 6.35, 1.95); fins.setMatrixAt(i, m4); }
+  hs.add(fins);
+  const shroud = G();
+  const sh = new THREE.Shape(); sh.moveTo(-11, -5.3); sh.lineTo(11, -5.3); sh.lineTo(11, 5.3); sh.lineTo(-11, 5.3); sh.lineTo(-11, -5.3);
+  for (const x of [-5, 5]) { const hole = new THREE.Path(); hole.absarc(x, 0, 4.35, 0, Math.PI * 2, true); sh.holes.push(hole); }
+  const shm = mat({ color: 0x1d2329, roughness: .45, metalness: .35 });
+  const sm = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: .35, bevelEnabled: false, curveSegments: 48 }), shm);
+  sm.position.set(6.6, 6.35, 3.1); shroud.add(sm);
+  box(22, .3, 2.6, shm, 6.6, 11.5, 1.95, shroud); box(22, .3, 2.6, shm, 6.6, 1.2, 1.95, shroud);
+  box(16, .18, .5, MAT.copper, 6.6, 11.72, 2.9, shroud);
+  for (const x of [1.6, 11.6]) { const f = makeFan(9, 9, false, .6, 'enc'); f.position.set(x, 6.35, 3.25); shroud.add(f); }
+  const bp = G(); box(23.5, 10.6, .16, MAT.dark, 6, 6.35, -.25, bp);
+  layer('Кожух и вентиляторы', 'Кожух направляет воздух от вентиляторов сквозь радиатор. При слабой нагрузке вентиляторы многих карт полностью останавливаются.', [16.5, 10, 3.5], [[shroud, [0, 0, 13]]]);
+  layer('Радиатор и тепловые трубки', 'Медная пластина забирает тепло с чипа, трубки разносят его по десяткам алюминиевых рёбер. Внутри трубок жидкость: она испаряется у горячего конца и конденсируется у холодного.', [17, 10.8, 3.05], [[hs, [0, 0, 7]]]);
+  layer('Графический процессор', 'Кристалл с тысячами простых ядер, которые параллельно считают пиксели, геометрию и нейросети. Его модель указана в названии карты.', [4, 6.3, .33], [[die, [0, 0, 0]]]);
+  layer('Видеопамять GDDR6', 'Микросхемы вокруг GPU хранят текстуры, кадры и модели. Объём определяет, сколько данных программа держит под рукой.', [7.7, 9.7, .2], [[vram, [0, 0, 0]]]);
+  layer('Цепи питания VRM', 'Дроссели и транзисторы превращают 12 В от блока питания примерно в 1 В для GPU и памяти. Чем мощнее карта, тем больше фаз питания.', [16, 8.4, .78], [[vrm, [0, 0, 0]]]);
+  layer('Печатная плата', 'Многослойная плата соединяет все элементы. Золотые контакты внизу вставляются в слот PCIe x16, а кронштейн с разъёмами выходит на заднюю стенку корпуса.', [-2.5, 1.4, .1], [[pcb, [0, 0, 0]]]);
+  layer('Бэкплейт', 'Металлическая пластина сзади делает плату жёстче, чтобы тяжёлая карта не прогибалась.', [16, 3, -.33], [[bp, [0, 0, -5]]]);
+}
+function encCPU(m, layer) {
+  const sub = G();
+  box(3.75, .12, 4.5, MAT.pcbG, 0, .06, 0, sub);
+  for (let i = 0; i < 6; i++) { box(.18, .06, .1, MAT.dark, -1.2 + i * .48, .15, -2.1, sub); box(.18, .06, .1, MAT.dark, -1.2 + i * .48, .15, 2.1, sub); }
+  const tri = new THREE.Mesh(new THREE.CircleGeometry(.24, 3), MAT.gold);
+  tri.rotation.x = -Math.PI / 2; tri.rotation.z = Math.PI / 4; tri.position.set(-1.6, .125, 1.98); sub.add(tri);
+  const pads = G();
+  const padTex = canvasTex(300, 360, (c, w, h) => {
+    c.fillStyle = '#1f5a3b'; c.fillRect(0, 0, w, h); c.fillStyle = '#e2ad55';
+    for (let y = 8; y < h - 6; y += 8) for (let x = 8; x < w - 6; x += 8) { if (x > w * .38 && x < w * .62 && y > h * .4 && y < h * .6) continue; c.beginPath(); c.arc(x, y, 2.2, 0, Math.PI * 2); c.fill(); }
+  });
+  const pp = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 4.3), mat({ map: padTex, metalness: .6, roughness: .35, side: THREE.DoubleSide }));
+  pp.rotation.x = Math.PI / 2; pp.position.y = -.01; pads.add(pp);
+  const die = G();
+  const dieTex = canvasTex(256, 320, (c, w, h) => {
+    const g = c.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#3b2f5c'); g.addColorStop(.5, '#1f4d63'); g.addColorStop(1, '#4a3b2a');
+    c.fillStyle = g; c.fillRect(0, 0, w, h); c.strokeStyle = 'rgba(255,255,255,.22)'; c.lineWidth = 2;
+    for (let i = 0; i < 8; i++) c.strokeRect(12 + (i % 4) * 60, 16 + Math.floor(i / 4) * 92, 50, 82);
+    c.fillStyle = 'rgba(255,255,255,.1)'; c.fillRect(12, 206, 232, 46); c.fillRect(12, 262, 232, 44);
+  });
+  const dm = mat({ map: dieTex, metalness: .7, roughness: .15 }), ds = mat({ color: 0x2a3340, metalness: .6, roughness: .3 });
+  const d = new THREE.Mesh(new THREE.BoxGeometry(1.8, .08, 2.4), [ds, ds, dm, ds, ds, ds]); d.position.y = .16; die.add(d);
+  const tim = G(); box(1.9, .03, 2.5, mat({ color: 0xc0c6cc, metalness: .9, roughness: .5 }), 0, .215, 0, tim);
+  const ihs = G();
+  const ihsTex = canvasTex(320, 384, (c, w, h) => {
+    const gr = c.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#d5dbe0'); gr.addColorStop(1, '#a9b1b8');
+    c.fillStyle = gr; c.fillRect(0, 0, w, h); c.fillStyle = '#4f585f'; c.textBaseline = 'top';
+    c.font = `600 34px ${MONO}`; c.fillText('EDU CORE 8', 26, 120);
+    c.font = `500 22px ${MONO}`; c.fillText('8C/16T · 3.4 GHz', 26, 172); c.fillText('LGA1700 · 65 W', 26, 206);
+  });
+  const st = MAT.steel, tm = mat({ map: ihsTex, metalness: .8, roughness: .35 });
+  const ih = new THREE.Mesh(new THREE.BoxGeometry(3.1, .22, 3.6), [st, st, tm, st, st, st]); ih.position.y = .34; ihs.add(ih);
+  layer('Теплораспределительная крышка', 'Никелированная медная крышка защищает хрупкий кристалл и равномерно передаёт тепло кулеру. На ней напечатаны модель и серийный номер.', [1.55, .45, -1.3], [[ihs, [0, 3.4, 0]]]);
+  layer('Термоинтерфейс', 'Слой припоя или термопасты между кристаллом и крышкой. Без него тепло от кристалла почти не уходило бы.', [.95, .23, 1.25], [[tim, [0, 2.1, 0]]]);
+  layer('Кристалл', 'Кусочек кремния площадью около 2 см² с миллиардами транзисторов. Видны восемь ядер, ниже — кэш-память и контроллеры.', [-.9, .2, -1.2], [[die, [0, 1.0, 0]]]);
+  layer('Подложка', 'Многослойная плата, которая соединяет крошечные выводы кристалла с крупными контактами снизу. Золотой треугольник показывает, как ставить процессор в сокет.', [1.85, .12, 1.6], [[sub, [0, 0, 0]]]);
+  layer('Контактные площадки', '1700 позолоченных площадок на нижней стороне. Они прижимаются к пружинящим ножкам сокета.', [-1.8, -.01, -2.1], [[pads, [0, -1.4, 0]]]);
+}
+function encCooler(m, layer) {
+  const base = G(); box(4, .8, 4, MAT.copper, 0, .4, 0, base);
+  const pipes = G(); for (const x of [-1.1, 1.1]) for (const z of [-1.4, 1.4]) cyl(.3, 14.8, MAT.copper, x, 7.8, z, pipes, 16);
+  const fins = G();
+  const fi = new THREE.InstancedMesh(new THREE.BoxGeometry(5, .05, 12), MAT.alu, 36), m4 = new THREE.Matrix4();
+  for (let i = 0; i < 36; i++) { m4.makeTranslation(0, 3 + i * .34, 0); fi.setMatrixAt(i, m4); }
+  fins.add(fi); box(5.3, .35, 12.3, MAT.black, 0, 15.2, 0, fins); box(5.32, .06, 3, MAT.copper, 0, 15.4, 0, fins);
+  const fan = G(); const f = makeFan(12, 7, true, 2.5, 'enc'); f.rotation.y = Math.PI / 2; f.position.set(3.8, 9.2, 0); fan.add(f);
+  const mount = G(); box(7.2, .15, .9, MAT.steel, 0, .85, 0, mount);
+  for (const x of [-3.3, 3.3]) cyl(.22, .9, MAT.steel, x, .7, 0, mount, 12);
+  layer('Вентилятор', 'Прогоняет воздух сквозь рёбра. Вентилятор 120 мм тише маленького: чтобы прокачать тот же воздух, ему не нужно крутиться так быстро.', [5.1, 14.5, 0], [[fan, [7, 0, 0]]]);
+  layer('Рёбра радиатора', 'Десятки тонких алюминиевых пластин. Чем больше их общая площадь, тем больше тепла уходит в воздух.', [-2.5, 13, -5], [[fins, [0, 5, 0]]]);
+  layer('Тепловые трубки', 'Медные трубки с жидкостью внутри. Она испаряется у горячего основания, пар поднимается к рёбрам, остывает и стекает обратно.', [1.1, 2.4, 1.4], [[pipes, [0, 1.5, 0]]]);
+  layer('Медное основание', 'Прижимается к крышке процессора через термопасту и собирает тепло. Медь проводит тепло почти вдвое лучше алюминия.', [2, .4, 2], [[base, [0, -2.6, 0]]]);
+  layer('Крепление', 'Металлическая планка прижимает кулер к процессору с нужным усилием через винты вокруг сокета.', [3.3, 1.15, 0], [[mount, [0, -1.1, 0]]]);
+}
+function encRAM(m, layer) {
+  const pcb = G();
+  box(.12, 3.1, 13.3, MAT.pcbG, 0, 1.55, 0, pcb);
+  box(.14, .34, 6.8, MAT.gold, 0, .17, -3.1, pcb); box(.14, .34, 5.8, MAT.gold, 0, .17, 3.6, pcb);
+  const chips = G(), ct = chipTex('DDR5', '2 GB');
+  for (const s of [-1, 1]) for (let i = 0; i < 8; i++) { const o = chip(1.25, .1, 1.0, ct, s * .11, 1.75, -5.6 + i * 1.6, chips); o.rotation.z = -s * Math.PI / 2; }
+  const pmic = G(); const pc = chip(.7, .1, .7, chipTex("PMIC", "5V→1.1V"), .11, 2.75, 5.85, pmic); pc.rotation.z = -Math.PI / 2;
+  const label = canvasTex(1024, 220, (c, w, h) => {
+    c.fillStyle = '#272e34'; c.fillRect(0, 0, w, h);
+    c.fillStyle = '#e0975a'; c.beginPath(); c.moveTo(w * .62, 0); c.lineTo(w * .7, 0); c.lineTo(w * .6, h); c.lineTo(w * .52, h); c.fill();
+    c.fillStyle = '#e4e9ec'; c.font = `600 54px ${MONO}`; c.textBaseline = 'middle'; c.fillText('EDU MEMORY', 50, 80);
+    c.fillStyle = '#9aa6b0'; c.font = `500 34px ${MONO}`; c.fillText('DDR5-5600 · 16 GB · CL36', 50, 150);
+  });
+  const sp = mat({ color: 0x2d353c, metalness: .7, roughness: .45 }), lm = mat({ map: label, metalness: .4, roughness: .5 });
+  const s1 = G(), s2 = G();
+  const a = new THREE.Mesh(new THREE.BoxGeometry(.1, 2.6, 13), [lm, sp, sp, sp, sp, sp]); a.position.set(.24, 1.75, 0); s1.add(a);
+  const b = new THREE.Mesh(new THREE.BoxGeometry(.1, 2.6, 13), sp); b.position.set(-.24, 1.75, 0); s2.add(b);
+  const light = G(); box(.5, .28, 12.8, mat({ color: 0xe6ecf0, roughness: .3, transparent: true, opacity: .85 }), 0, 3.2, 0, light);
+  layer('Радиаторы', 'Алюминиевые пластины с двух сторон отводят тепло от чипов и защищают их от царапин.', [.29, 2.9, -4.5], [[s1, [3.6, 0, 0]], [s2, [-3.6, 0, 0]]]);
+  layer('Подсветка', 'Светорассеиватель со светодиодами. На скорость не влияет, только на внешний вид.', [0, 3.34, 4], [[light, [0, 2.2, 0]]]);
+  layer('Чипы памяти', 'Микросхемы DRAM хранят данные в миллиардах крошечных конденсаторов. Заряд нужно постоянно обновлять, поэтому без питания всё стирается.', [.17, 1.75, 2.4], [[chips, [0, 0, 0]]]);
+  layer('Контроллер питания PMIC', 'В модулях DDR5 питание регулируется прямо на модуле, а не на материнской плате. Так напряжение стабильнее.', [.17, 2.75, 5.85], [[pmic, [0, 0, 0]]]);
+  layer('Плата и контакты', '288 позолоченных контактов. Вырез-ключ не даёт вставить модуль другой стороной или в слот другого поколения.', [.08, .2, -5.5], [[pcb, [0, 0, 0]]]);
+}
+function encSSD(m, layer) {
+  const pcb = G();
+  box(8, .08, 2.2, MAT.pcbK, 0, .04, 0, pcb); box(.5, .09, 1.9, MAT.gold, -3.75, .045, 0, pcb);
+  for (let i = 0; i < 8; i++) box(.12, .05, .08, MAT.dark, 3.4, .1, -.8 + i * .22, pcb);
+  const ctrl = G(); chip(1.3, .14, 1.3, chipTex('CTRL', 'PCIe 4.0'), -2.2, .15, 0, ctrl);
+  const nand = G(), nt = chipTex('NAND', '512 GB');
+  chip(1.7, .14, 1.5, nt, .6, .15, 0, nand); chip(1.7, .14, 1.5, nt, 2.6, .15, 0, nand);
+  const dram = G(); chip(.85, .12, .85, chipTex('DRAM', '1 GB'), -.9, .14, 0, dram);
+  const stk = G();
+  const lab = canvasTex(512, 140, (c, w, h) => {
+    c.fillStyle = '#20262b'; c.fillRect(0, 0, w, h); c.fillStyle = '#e0975a'; c.fillRect(0, 0, 14, h);
+    c.fillStyle = '#e4e9ec'; c.font = `700 34px ${MONO}`; c.textBaseline = 'middle'; c.fillText('EDU NVMe 1TB', 36, 50);
+    c.fillStyle = '#9aa6b0'; c.font = `500 22px ${MONO}`; c.fillText('PCIe 4.0 x4 · M.2 2280', 36, 100);
+  });
+  const lm = mat({ map: lab, roughness: .5 }), sd = mat({ color: 0x9a6a3c, metalness: .8, roughness: .4 });
+  const s = new THREE.Mesh(new THREE.BoxGeometry(6.6, .02, 1.9), [sd, sd, lm, sd, sd, sd]); s.position.set(.4, .24, 0); stk.add(s);
+  layer('Наклейка', 'Наклейка с медным слоем: показывает модель и немного распределяет тепло по поверхности.', [3.3, .26, .8], [[stk, [0, 3, 0]]]);
+  layer('Контроллер', 'Мозг накопителя: решает, в какие ячейки записать данные, равномерно изнашивает память и исправляет ошибки.', [-2.2, .23, -.5], [[ctrl, [0, 1.4, 0]]]);
+  layer('Флеш-память NAND', 'Хранит данные в ячейках, которые держат заряд без питания. Внутри микросхемы — больше сотни слоёв ячеек друг над другом.', [2.6, .23, .6], [[nand, [0, 1.4, 0]]]);
+  layer('Кэш DRAM', 'Небольшая быстрая память, в которой контроллер держит карту расположения данных. Ускоряет работу с мелкими файлами.', [-.9, .21, .35], [[dram, [0, 1.4, 0]]]);
+  layer('Плата и разъём M.2', 'Вырез на контактах — ключ M: он означает поддержку интерфейса PCIe NVMe. С другой стороны полукруглый вырез под винт.', [-3.75, .1, -.8], [[pcb, [0, 0, 0]]]);
+}
+function encHDD(m, layer) {
+  const al = mat({ color: 0xb4bcc3, metalness: .85, roughness: .4 });
+  const pcb = G(); box(14.2, .1, 9.8, MAT.pcbG, 0, .05, 0, pcb);
+  chip(1.6, .12, 1.6, chipTex('MCU', 'SATA'), -2, .15, -2, pcb); chip(1.2, .12, .9, chipTex('DRAM', '256M'), 1, .15, -2.6, pcb);
+  box(.4, .6, 1.0, MAT.black, -7.2, .35, -.4, pcb); box(.4, .6, 2.0, MAT.black, -7.2, .35, 3.0, pcb);
+  const base = G();
+  box(14.7, .25, 10.2, al, 0, .23, 0, base);
+  box(14.7, 2.1, .3, al, 0, 1.4, 4.95, base); box(14.7, 2.1, .3, al, 0, 1.4, -4.95, base);
+  box(.3, 2.1, 10.2, al, 7.2, 1.4, 0, base); box(.3, 2.1, 10.2, al, -7.2, 1.4, 0, base);
+  const spindle = G(); cyl(1.1, 1.7, MAT.steel, 2.2, 1.2, 0, spindle, 32); cyl(1.45, .12, MAT.steel, 2.2, 2.0, 0, spindle, 32);
+  const disk = mat({ color: 0xdfe4e8, metalness: 1, roughness: .07 });
+  const p1 = G(), p2 = G(); cyl(4.6, .1, disk, 2.2, .95, 0, p1, 64); cyl(4.6, .1, disk, 2.2, 1.45, 0, p2, 64);
+  const act = G();
+  cyl(.5, 1.6, MAT.steel, -4.4, 1.15, 2.8, act, 20);
+  for (const y of [1.2, 1.7]) { const arm = box(5.7, .05, .55, MAT.steel, -1.75, y, 1.7, act); arm.rotation.y = .393; box(.3, .08, .3, MAT.dark, 0.85, y, .65, act); }
+  box(1.6, .45, 1.8, MAT.dark, -5.7, 1.1, 3.3, act);
+  const cover = G();
+  const lab = canvasTex(736, 512, (c, w, h) => {
+    const gr = c.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#c9cfd4'); gr.addColorStop(1, '#9ea7ae');
+    c.fillStyle = gr; c.fillRect(0, 0, w, h);
+    roundRect(c, 40, 50, 420, 300, 12); c.fillStyle = '#22282d'; c.fill();
+    c.fillStyle = '#e4e9ec'; c.textBaseline = 'top'; c.font = `700 44px ${MONO}`; c.fillText('EDU DRIVE', 70, 80);
+    c.font = `600 30px ${MONO}`; c.fillStyle = '#e0975a'; c.fillText('2 TB · 7200 RPM', 70, 150);
+  });
+  const lm = mat({ map: lab, metalness: .6, roughness: .45 });
+  const cv = new THREE.Mesh(new THREE.BoxGeometry(14.7, .15, 10.2), [al, al, lm, al, al, al]); cv.position.y = 2.53; cover.add(cv);
+  layer('Крышка', 'Герметично закрывает блок с пластинами: внутрь не должна попасть ни одна пылинка.', [-5.5, 2.62, -4.2], [[cover, [0, 9, 0]]]);
+  layer('Магнитные пластины', 'Алюминиевые или стеклянные диски с магнитным слоем. Данные записаны на них концентрическими дорожками.', [6.6, 1.5, -1], [[p1, [0, 2.2, 0]], [p2, [0, 3.9, 0]]]);
+  layer('Блок магнитных головок', 'Рычаг с головками поворачивается катушкой в поле магнита. Головка летит на воздушной подушке в нескольких нанометрах над пластиной.', [-5.7, 1.35, 3.3], [[act, [-2.5, 1.6, 3.2]]]);
+  layer('Шпиндельный двигатель', 'Вращает пластины со скоростью 5400 или 7200 оборотов в минуту.', [2.2, 2.08, 1], [[spindle, [0, 0, 0]]]);
+  layer('Гермоблок', 'Литой алюминиевый корпус, в котором всё собрано. Тяжёлый и жёсткий, чтобы гасить вибрации.', [-7.2, 2.45, -2], [[base, [0, 0, 0]]]);
+  layer('Плата контроллера', 'Снаружи снизу. Управляет двигателем и головками и обменивается данными с компьютером через разъём SATA.', [-2, .2, -2], [[pcb, [0, -2.6, 0]]]);
+}
+function encPSU(m, layer) {
+  const body = mat({ color: 0x1b1f23, roughness: .5, metalness: .4 });
+  const housing = G();
+  box(14, .12, 15, body, 0, .06, 0, housing);
+  box(.12, 8.6, 15, body, -6.94, 4.3, 0, housing);
+  box(.3, 2.6, 2.2, MAT.black, -7.15, 6, -3, housing); box(.3, 1.4, 1, mat({ color: 0x2b2f33 }), -7.15, 3.2, -3, housing);
+  const cover = G();
+  const grill = canvasTex(512, 548, (c, w, h) => {
+    c.fillStyle = '#1b1f23'; c.fillRect(0, 0, w, h); c.strokeStyle = '#3a4148'; c.lineWidth = 8;
+    for (let r = 30; r < 230; r += 34) { c.beginPath(); c.arc(w / 2, h / 2, r, 0, Math.PI * 2); c.stroke(); }
+    c.fillStyle = '#e0975a'; c.font = `700 30px ${MONO}`; c.fillText('EDU POWER 650', 24, 44);
+  });
+  const gm = mat({ map: grill, roughness: .5, metalness: .4 });
+  const cv = new THREE.Mesh(new THREE.BoxGeometry(14, .12, 15), [body, body, gm, body, body, body]); cv.position.y = 8.66; cover.add(cv);
+  box(14, 8.6, .12, body, 0, 4.3, 7.44, cover); box(14, 8.6, .12, body, 0, 4.3, -7.44, cover);
+  const fan = G(); const f = makeFan(12, 7, false, 1.2, 'enc'); f.rotation.x = -Math.PI / 2; f.position.set(0, 7.6, 0); fan.add(f);
+  const board = G(); box(13, .12, 14, MAT.pcbG, .2, .62, 0, board);
+  for (let i = 0; i < 9; i++) cyl(.3, .9, MAT.black, 3.5 + (i % 3) * .9, 1.13, 4 + Math.floor(i / 3) * .9, board, 14);
+  const cap = G(); cyl(1.15, 3.6, mat({ color: 0x1c2228, roughness: .35 }), -3.6, 2.5, -4.6, cap, 32); cyl(1.15, .05, MAT.steel, -3.6, 4.33, -4.6, cap, 32);
+  const trafo = G();
+  box(2.6, 2.4, 2.6, mat({ color: 0xd9b44a, roughness: .55 }), 1.6, 1.9, .6, trafo);
+  box(2.9, .6, 1.2, MAT.dark, 1.6, 3.35, .6, trafo); box(2.9, .6, 1.2, MAT.dark, 1.6, .9, .6, trafo);
+  const sinks = G();
+  for (const [x, z] of [[-1.4, 2.6], [4.6, -2.2]]) { box(.3, 3.6, 7.5, MAT.alu, x, 2.5, z, sinks); for (let i = 0; i < 5; i++) box(1.4, .08, 7.5, MAT.alu, x + .7, 1.2 + i * .65, z, sinks); }
+  const modular = G();
+  box(.3, 7, 13.5, MAT.black, 6.85, 4.2, 0, modular);
+  [[2.8, -4.5], [2.8, -1.5], [2.8, 1.5], [5.6, -4.5], [5.6, -1.5], [5.6, 1.5], [5.6, 4.5]].forEach(([y, z]) => box(.12, 1.2, 2.2, mat({ color: 0x050607 }), 7.06, y, z, modular));
+  layer('Кожух', 'Стальной корпус защищает от высокого напряжения внутри. Вскрывать блок питания опасно даже после отключения: конденсаторы долго держат заряд.', [-4.5, 8.75, 5.5], [[cover, [0, 10, -15]], [housing, [0, 0, 0]]]);
+  layer('Вентилятор', 'Охлаждает детали внутри. В хороших блоках при малой нагрузке вентилятор не крутится вовсе.', [3.2, 7.7, -3.2], [[fan, [0, 6, 0]]]);
+  layer('Конденсатор высокого напряжения', 'Самый крупный цилиндр: сглаживает выпрямленное напряжение сети — около 310 В.', [-3.6, 4.4, -4.6], [[cap, [0, 0, 0]]]);
+  layer('Трансформатор', 'Понижает напряжение и отделяет компьютер от сети, чтобы опасное напряжение не попало на детали.', [1.6, 3.7, .6], [[trafo, [0, 0, 0]]]);
+  layer('Радиаторы транзисторов', 'Охлаждают силовые транзисторы и диоды, которые переключаются десятки тысяч раз в секунду.', [4.6, 4.3, -5.9], [[sinks, [0, 0, 0]]]);
+  layer('Модульная панель', 'Разъёмы для кабелей: подключаете только нужные, и лишние провода не мешают внутри корпуса.', [7.1, 6.8, 4.5], [[modular, [3.5, 0, 0]]]);
+  layer('Печатная плата', 'Соединяет все элементы. Входной фильтр на ней не пускает помехи из сети в компьютер и обратно.', [5.5, .7, 6], [[board, [0, 0, 0]]]);
+}
+function encBoard(m, layer) {
+  const saved = { ...LED }, n0 = allParts.length;
+  const b = buildBoard();
+  Object.assign(LED, saved);
+  const mine = allParts.splice(n0);
+  const byId = id => mine.find(g => g.userData.part === id);
+  const top = g => { const bb = new THREE.Box3().setFromObject(g); return [(bb.min.x + bb.max.x) / 2, bb.max.y + .05, (bb.min.z + bb.max.z) / 2]; };
+  m.add(b);
+  const groups = [['socket'], ['dimm'], ['pcie16_1', 'pcie1', 'pcie16_2'], ['m2'], ['vrm'], ['chipset'], ['io'], ['atx24', 'eps'], ['sata'], ['battery'], ['qled']];
+  const names = { pcie16_1: 'Слоты PCIe', atx24: 'Разъёмы питания' };
+  const texts = {
+    pcie16_1: 'Слоты расширения для видеокарты и других плат. Длинные — x16, короткий — x1. Верхний x16 подключён к процессору, остальные — к чипсету.',
+    atx24: 'Широкий ATX 24-pin питает всю плату, CPU 8-pin в верхнем углу — отдельно процессор.',
+  };
+  groups.forEach((ids, i) => {
+    const gs = ids.map(byId);
+    layer(names[ids[0]] || PARTS[ids[0]].name, texts[ids[0]] || PARTS[ids[0]].desc, top(gs[0]), gs.map(g => [g, [0, 3 + (i % 3) * .9, 0]]));
+  });
+  layer('Печатная плата', 'Многослойная плата из стеклотекстолита. Медные дорожки на поверхности и внутри, в 6–10 слоях, соединяют все разъёмы и микросхемы.', [-6, .05, 12.6], [[b, [0, 0, 0]]]);
+}
+
+const ENC_ORDER = ['board', 'cpu', 'cooler', 'ram', 'ssd', 'gpu', 'hdd', 'psu'];
+const ENC = {
+  board: { title: 'Материнская плата', build: encBoard, dir: [.25, 1.3, 1], intro: I.board.desc,
+    choose: ['Сокет и чипсет определяют, какие процессоры подходят.', 'Формат (ATX, mATX, Mini-ITX) должен подходить к корпусу.', 'Посчитайте нужные разъёмы: M.2, SATA, слоты PCIe, порты USB.', 'Для мощных процессоров нужны хорошие радиаторы VRM.'],
+    fact: 'Внутри платы 6–10 слоёв медных дорожек: большая часть соединений спрятана между слоями стеклотекстолита.' },
+  cpu: { title: 'Процессор', build: encCPU, dir: [.7, 1, 1], intro: I.cpu.desc,
+    choose: ['Сокет процессора должен совпадать с сокетом платы.', 'Ядра и потоки важны для монтажа видео, программирования, многозадачности; частота — для игр.', 'Тепловыделение подсказывает, какой нужен кулер.', 'Буква F в названии значит, что встроенной графики нет — понадобится видеокарта.'],
+    fact: 'Транзисторы современного процессора в тысячи раз меньше толщины человеческого волоса.' },
+  cooler: { title: 'Кулер', build: encCooler, dir: [-.6, .6, 1], intro: I.cooler.desc,
+    choose: ['Крепление должно подходить к сокету.', 'Мощность рассеивания должна быть выше тепловыделения процессора.', 'Высота башни должна помещаться в корпус.', 'Широкий радиатор может закрыть слоты памяти с высокими радиаторами.'],
+    fact: 'Тепловая трубка проводит тепло в сотни раз лучше сплошного медного стержня того же размера.' },
+  ram: { title: 'Оперативная память', build: encRAM, dir: [.75, .55, .75], intro: I.ram.desc,
+    choose: ['Тип памяти (DDR4 или DDR5) должен совпадать с платой.', '16 ГБ — минимум для учёбы и игр, 32 ГБ — для монтажа и тяжёлых задач.', 'Берите два одинаковых модуля, чтобы работал двухканальный режим.', 'Частота и тайминги (CL) влияют на скорость, но меньше, чем объём.'],
+    fact: 'Каждая ячейка DRAM — крошечный конденсатор. Он теряет заряд, поэтому память перезаписывает его каждые 32–64 миллисекунды.' },
+  ssd: { title: 'SSD M.2', build: encSSD, dir: [.45, .9, 1], intro: I.ssd.desc,
+    choose: ['NVMe-накопители в разы быстрее SATA SSD.', 'Для системы и программ хватит 500 ГБ–1 ТБ.', 'Ресурс записи (TBW) показывает, сколько данных можно записать за срок службы.', 'Проверьте, какую версию PCIe поддерживает слот M.2 на плате.'],
+    fact: 'У SSD нет движущихся частей, поэтому он не боится тряски и работает бесшумно.' },
+  gpu: { title: 'Видеокарта', build: encGPU, dir: [.9, .8, 1], intro: I.gpu.desc,
+    choose: ['Главное — модель графического процессора: от неё зависит производительность.', 'Видеопамять: 8 ГБ для Full HD, 12–16 ГБ для 2K и 4K.', 'Длина карты должна помещаться в корпус, а блоку питания хватать мощности с запасом.', 'Толщина радиатора и число вентиляторов влияют на шум и температуру.'],
+    fact: 'В современном графическом процессоре десятки миллиардов транзисторов — больше, чем в центральном.' },
+  hdd: { title: 'Жёсткий диск', build: encHDD, dir: [.6, .8, 1], intro: I.hdd.desc,
+    choose: ['HDD берут ради объёма: 2–4 ТБ стоят дешевле, чем SSD того же размера.', '7200 об/мин — быстрее, 5400 — тише и холоднее.', 'Систему лучше ставить на SSD, а HDD оставить для файлов и архивов.'],
+    fact: 'Головка летит над пластиной на расстоянии в тысячи раз меньше толщины волоса — поэтому диск так боится ударов.' },
+  psu: { title: 'Блок питания', build: encPSU, dir: [1, .7, .8], intro: I.psu.desc,
+    choose: ['Сложите потребление процессора и видеокарты и добавьте 30–40 %.', 'Сертификат 80 PLUS (Bronze, Gold и выше) показывает КПД: чем он выше, тем меньше тепла и шума.', 'Модульные кабели упрощают сборку.', 'Не экономьте на блоке питания: от него зависит надёжность всех деталей.'],
+    fact: 'КПД блока 80 PLUS Gold — около 90 %: из 100 Вт из розетки 90 доходят до компонентов, остальное уходит в тепло.' },
+};
+const ENC_KIND = { board: I.board.kind, cpu: I.cpu.kind, cooler: I.cooler.kind, ram: 'ОЗУ · DDR5', ssd: I.ssd.kind, gpu: I.gpu.kind, hdd: I.hdd.kind, psu: I.psu.kind };
+
+function encBuild(id) {
+  const E = ENC[id]; if (E.model) return E.model;
+  const root = G(), m = G(); root.add(m);
+  const layers = [];
+  const layer = (name, text, anchor, pieces) => {
+    const items = pieces.map(([g, ex]) => { m.add(g); g.userData.layer = layers.length; return { g, base: g.position.clone(), ex: new V3(...ex) }; });
+    const a = new THREE.Object3D(); a.position.set(...anchor); items[0].g.add(a);
+    layers.push({ name, text, items, anchor: a, lvl: 0 });
+  };
+  E.build(m, layer);
+  for (const L of layers) for (const it of L.items) it.g.traverse(o => {
+    if (!o.isMesh) return;
+    o.castShadow = o.receiveShadow = true;
+    if (!o.userData.keep) o.material = Array.isArray(o.material) ? o.material.map(x => x.clone()) : o.material.clone();
+  });
+  const apply = k => { for (const L of layers) for (const it of L.items) it.g.position.copy(it.base).addScaledVector(it.ex, k); root.updateMatrixWorld(true); };
+  const bb = new THREE.Box3(), b0 = new THREE.Box3();
+  apply(1); bb.setFromObject(root); apply(0); b0.setFromObject(root); bb.union(b0);
+  root.position.set(-(bb.min.x + bb.max.x) / 2, -bb.min.y + .02, -(bb.min.z + bb.max.z) / 2);
+  const size = bb.getSize(new V3());
+  E.model = { root, layers, apply, center: new V3(0, size.y / 2, 0), radius: size.length() / 2 };
+  return E.model;
+}
+const enc = { id: null, model: null, t: 0, target: 0, sel: null, hover: null, labelsOn: true, labels: [] };
+const encList = $('#encList'), encLabelsEl = $('#encLabels'), explodeEl = $('#explode');
+encList.innerHTML = ENC_ORDER.map(id => `
+  <button class="card enc-card" type="button" data-enc="${id}">
+    <img alt="" draggable="false" src="${thumbs[id] || ''}">
+    <span class="meta"><span class="name">${ENC[id].title}</span><span class="kindline">${ENC_KIND[id]}</span></span>
+  </button>`).join('');
+encList.addEventListener('click', e => { const c = e.target.closest('[data-enc]'); if (c) encOpen(c.dataset.enc); });
+
+function updateEncButtons() {
+  $('#encToggle').textContent = enc.target > .5 ? 'Собрать' : 'Разобрать';
+  $('#encSpin').setAttribute('aria-pressed', String(encControls.autoRotate));
+  $('#encLabelsBtn').setAttribute('aria-pressed', String(enc.labelsOn));
+}
+function encOpen(id) {
+  if (enc.model) encScene.remove(enc.model.root);
+  enc.id = id; enc.model = encBuild(id); encScene.add(enc.model.root);
+  enc.t = enc.target = 0; enc.sel = enc.hover = null; enc.model.apply(0);
+  explodeEl.value = 0;
+  const M = enc.model, vf = THREE.MathUtils.degToRad(encCam.fov), hf = 2 * Math.atan(Math.tan(vf / 2) * encCam.aspect);
+  const dist = M.radius * 1.05 / Math.sin(Math.min(vf, hf) / 2);
+  encControls.target.copy(M.center);
+  encCam.position.copy(M.center).addScaledVector(new V3(...ENC[id].dir).normalize(), dist);
+  encCam.near = dist / 200; encCam.far = dist * 20; encCam.updateProjectionMatrix();
+  encControls.minDistance = dist * .3; encControls.maxDistance = dist * 2.5;
+  encControls.update();
+  encLabelsEl.innerHTML = M.layers.map((L, i) => `<button class="elabel" type="button" data-i="${i}"><b>${i + 1}</b><span>${L.name}</span></button>`).join('');
+  enc.labels = [...encLabelsEl.children];
+  M.layers.forEach(L => L.lvl = -1);
+  for (const el of encList.children) el.classList.toggle('selected', el.dataset.enc === id);
+  updateEncButtons(); renderInfo(); paintEnc();
+}
+function paintEnc() {
+  if (!enc.model) return;
+  enc.model.layers.forEach((L, i) => {
+    const lvl = i === enc.hover ? .35 : i === enc.sel ? .22 : 0;
+    if (L.lvl === lvl) return;
+    L.lvl = lvl;
+    for (const it of L.items) it.g.traverse(o => {
+      if (!o.isMesh || o.userData.keep) return;
+      for (const mm of Array.isArray(o.material) ? o.material : [o.material]) if (mm.emissive) { mm.emissive.copy(COPPER); mm.emissiveIntensity = lvl; }
+    });
+  });
+  infoEl.querySelectorAll('.layers button').forEach(b => b.classList.toggle('on', +b.dataset.layer === enc.sel || +b.dataset.layer === enc.hover));
+}
+function encSelect(i) {
+  enc.sel = enc.sel === i ? null : i;
+  if (enc.sel !== null && enc.target < .5) { enc.target = 1; explodeEl.value = 100; updateEncButtons(); }
+  paintEnc();
+}
+function encPick(e) {
+  if (!enc.model) return null;
+  toNDC(e); raycaster.setFromCamera(ndc, encCam);
+  const hit = raycaster.intersectObject(enc.model.root, true)[0];
+  for (let o = hit?.object; o; o = o.parent) if (o.userData.layer !== undefined) return o.userData.layer;
+  return null;
+}
+function renderEncInfo() {
+  if (!enc.model) { infoEl.innerHTML = ''; return; }
+  const E = ENC[enc.id];
+  infoEl.innerHTML = `<div class="kind">${ENC_KIND[enc.id]}</div><h2>${E.title}</h2><p>${E.intro}</p>
+    <h3>Из чего состоит</h3>
+    <ol class="layers">${enc.model.layers.map((L, i) => `<li><button type="button" data-layer="${i}"><b>${i + 1}</b><span class="lt"><strong>${L.name}</strong><span class="ld">${L.text}</span></span></button></li>`).join('')}</ol>
+    <h3>Как выбрать</h3><ul class="choose">${E.choose.map(t => `<li>${t}</li>`).join('')}</ul>
+    <h3>Интересный факт</h3><p class="fact">${E.fact}</p>
+    <h3>Пример характеристик</h3>${specsHTML(I[enc.id].specs)}`;
+}
+const encHover = i => { if (i !== enc.hover) { enc.hover = i; paintEnc(); } };
+infoEl.addEventListener('pointerover', e => { if (mode !== 'enc') return; const b = e.target.closest('[data-layer]'); encHover(b ? +b.dataset.layer : null); });
+infoEl.addEventListener('pointerleave', () => { if (mode === 'enc') encHover(null); });
+encLabelsEl.addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) encSelect(+b.dataset.i); });
+encLabelsEl.addEventListener('pointerover', e => { const b = e.target.closest('[data-i]'); encHover(b ? +b.dataset.i : null); });
+encLabelsEl.addEventListener('pointerleave', () => encHover(null));
+explodeEl.addEventListener('input', () => { enc.target = explodeEl.value / 100; updateEncButtons(); });
+$('#encToggle').addEventListener('click', () => { enc.target = enc.target > .5 ? 0 : 1; explodeEl.value = enc.target * 100; updateEncButtons(); });
+$('#encLabelsBtn').addEventListener('click', () => { enc.labelsOn = !enc.labelsOn; updateEncButtons(); });
+$('#encSpin').addEventListener('click', () => { encControls.autoRotate = !encControls.autoRotate; updateEncButtons(); });
+const lv = new V3();
+function encFrame(dt) {
+  encControls.update();
+  if (enc.model) {
+    enc.t += (enc.target - enc.t) * Math.min(1, dt * (REDUCED ? 30 : 4));
+    enc.model.apply(easeInOut(Math.min(1, Math.max(0, enc.t))));
+    const W = stage.clientWidth, H = stage.clientHeight;
+    enc.labels.forEach((el, i) => {
+      enc.model.layers[i].anchor.getWorldPosition(lv); lv.project(encCam);
+      const show = (enc.labelsOn || i === enc.sel || i === enc.hover) && lv.z < 1;
+      el.hidden = !show;
+      if (show) el.style.transform = `translate(${Math.round((lv.x * .5 + .5) * W - 11)}px, ${Math.round((-lv.y * .5 + .5) * H - 13)}px)`;
+      el.classList.toggle('on', i === enc.sel || i === enc.hover);
+    });
+  }
+  if (!REDUCED) for (const r of rotors) if (r.owner === 'enc') r.rotor.rotation.z += dt * 3;
+  renderer.render(encScene, encCam);
+}
+
 /* ---------- камера ---------- */
 let viewTween = null;
 function frameView(name, animate) {
@@ -1626,6 +2115,7 @@ function resize() {
   if (!w || !h) return;
   renderer.setSize(w, h);
   camera.aspect = w / h; camera.updateProjectionMatrix();
+  encCam.aspect = w / h; encCam.updateProjectionMatrix();
   if (!framed) { frameView('case'); framed = true; }
 }
 new ResizeObserver(resize).observe(stage);
@@ -1640,6 +2130,7 @@ renderer.setAnimationLoop(() => {
     tw.fn(k);
     if (k >= 1) { tweens.splice(i, 1); tw.done && tw.done(); }
   }
+  if (mode === 'enc') { encFrame(dt); return; }
   controls.update();
   if (drag?.active && drag.shown) I[drag.id].mover.position.lerp(drag.goal, 1 - Math.pow(.0005, dt));
   for (const id of CABLE_ORDER) if (I[id].live) setTube(I[id], false);
@@ -1663,7 +2154,7 @@ renderer.setAnimationLoop(() => {
     G.o.visible = op > .01; G.m.opacity = op; G.m.color.copy(col);
   }
   fanSpeed += (spinTarget - fanSpeed) * Math.min(1, dt * (spinTarget ? 1.2 : .7));
-  if (!REDUCED || powered) for (const r of rotors) if (r.owner === 'case' || I[r.owner].installed) r.rotor.rotation.z += fanSpeed * dt * (REDUCED ? 4 : 28);
+  if (!REDUCED || powered) for (const r of rotors) if (r.owner !== 'enc' && (r.owner === 'case' || I[r.owner].installed)) r.rotor.rotation.z += fanSpeed * dt * (REDUCED ? 4 : 28);
   if (powered) { MAT.rgb.emissive.setHSL((t * .07) % 1, .85, .55); MAT.rgb.emissiveIntensity = 1.6 * fanSpeed; }
   else MAT.rgb.emissiveIntensity = 0;
   if (ledFault) setLed(ledFault, Math.floor(t * 2.5) % 2 === 0);

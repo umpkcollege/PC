@@ -2887,15 +2887,18 @@ function useGPUModel(model) {
   ENC.gpu.build = encGPUModel;
   if (ENC.gpu.model) { if (enc.model === ENC.gpu.model) encScene.remove(enc.model.root); ENC.gpu.model = null; if (mode === 'enc' && enc.id === 'gpu') encOpen('gpu'); }
 }
-// Сначала обычный .glb (GitHub Pages, локальный запуск); если его нет — та же модель в base64 (так её отдаёт страница на Claude).
+// Сначала обычный .glb (сайт на сервере, например GitHub Pages). Если его не получить — например, index.html открыт
+// с диска двойным кликом, и браузер запрещает fetch, — подключаем ту же модель скриптом models/gpu.js (base64).
+const loadScript = src => new Promise((ok, fail) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = fail; document.head.append(s); });
 (async () => {
   const isGlb = b => b && b.byteLength > 12 && new TextDecoder().decode(new Uint8Array(b, 0, 4)) === 'glTF';
   try {
     let buf = null;
     try { const r = await fetch('models/gpu.glb'); if (r.ok) buf = await r.arrayBuffer(); } catch (e) {}
     if (!isGlb(buf)) {
-      const r = await fetch('models/gpu.b64.txt'); if (!r.ok) throw new Error('нет файла модели');
-      const bin = atob((await r.text()).trim()), u8 = new Uint8Array(bin.length);
+      await loadScript('models/gpu.js');
+      const bin = atob(window.GPU_GLB_B64), u8 = new Uint8Array(bin.length);
+      delete window.GPU_GLB_B64;
       for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
       buf = u8.buffer;
     }

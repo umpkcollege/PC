@@ -96,6 +96,7 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 .loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font:500 13px var(--mono);text-align:center;padding:16px}
 
 .info{padding-right:4px}
+.info .credit{font-size:12px;color:var(--muted);margin-top:14px}.info .credit a{color:inherit}
 .info .kind{font:600 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:6px 0 4px}
 .info h2{font:700 20px/1.25 var(--display);margin:0 0 10px;text-wrap:balance}
 .info p{margin:0 0 12px;color:var(--fg-2);max-width:60ch}
@@ -503,7 +504,7 @@ controls.minDistance = 12;
 controls.maxDistance = 180;
 controls.maxPolarAngle = Math.PI * 0.49;
 const VIEW_DIR = new V3(0.16, 1.2, 0.95).normalize();
-const VIEWS = { case: { target: new V3(6.8, 3, 3.5), fit: [29, 24] }, board: { target: new V3(0, 1.5, 0.5), fit: [17.5, 16] } };
+const VIEWS = { case: { target: new V3(9.5, 3, 4.5), fit: [33, 25] }, board: { target: new V3(0, 1.5, 0.5), fit: [17.5, 16] } };
 
 scene.add(new THREE.HemisphereLight(0xc8dceb, 0x0e1317, 0.55));
 const key = new THREE.DirectionalLight(0xfff3e6, 2.4);
@@ -650,7 +651,8 @@ wall([
 ].map(([z1, z2, y1, y2]) => [.1, y2 - y1, z2 - z1, -12.55, (y1 + y2) / 2, (z1 + z2) / 2]), [-12.6, 0, 0], [-1, 0, 0]);
 wall([[38.6, 21, .2, CX, 9.5, 16.5]], [0, 0, 16.5], [0, 0, 1]);
 const shroudPart = part('shroud', caseG, false); // справка по кожуху — через список деталей
-box(38.8, .1, 45.9, MAT.dark, CX, -3.3, CZ, caseG);
+const sidePanelBox = box(38.8, .1, 45.9, MAT.dark, CX, -3.3, CZ, caseG);
+const caseCode = { trayPlate: null, frontFans: [], rearFan: null, cage: [], ioShield: null }; // то, что заменяет модель из файла
 
 { // поддон, стойки
   const g = part('tray', caseG, false);
@@ -668,18 +670,23 @@ box(38.8, .1, 45.9, MAT.dark, CX, -3.3, CZ, caseG);
   const tm = mat({ map: trayTex, roughness: .55, metalness: .45 });
   const tray = new THREE.Mesh(new THREE.BoxGeometry(38.6, .1, 45.6), [MAT.dark, MAT.dark, tm, MAT.dark, MAT.dark, MAT.dark]);
   tray.position.set(CX, -1.05, CZ); tray.receiveShadow = true; g.add(tray);
+  caseCode.trayPlate = tray;
   for (const [hx, hz] of HOLES) cyl(.3, .84, MAT.brass, hx, -.58, hz, g, 6);
 }
+const fansPart = part('fans', caseG);
 { // вентиляторы корпуса
-  const g = part('fans', caseG);
-  for (const z of [-9.5, 3.5]) { const f = makeFan(12, 7, true, 2.5, 'case'); f.rotation.y = Math.PI / 2; f.position.set(24.75, 9, z); g.add(f); }
+  const g = fansPart;
+  for (const z of [-9.5, 3.5]) { const f = makeFan(12, 7, true, 2.5, 'case'); f.rotation.y = Math.PI / 2; f.position.set(24.75, 9, z); g.add(f); caseCode.frontFans.push(f); }
   const r = makeFan(12, 7, true, 2.5, 'case'); r.rotation.y = Math.PI / 2; r.position.set(-11.2, 10.2, -8.5); g.add(r);
+  caseCode.rearFan = r;
 }
 { // корзина дисков
   const g = part('cage', caseG);
-  box(15, 2.2, .3, MAT.steel, 16.85, .1, 16.7, g);
-  box(15, 2.2, .3, MAT.steel, 16.85, .1, 27.25, g);
-  box(.3, 2.2, 10.85, MAT.steel, 24.5, .1, 22, g);
+  caseCode.cage = [
+    box(15, 2.2, .3, MAT.steel, 16.85, .1, 16.7, g),
+    box(15, 2.2, .3, MAT.steel, 16.85, .1, 27.25, g),
+    box(.3, 2.2, 10.85, MAT.steel, 24.5, .1, 22, g),
+  ];
 }
 const ioShieldPart = part('ioShield', caseG);
 {
@@ -687,9 +694,10 @@ const ioShieldPart = part('ioShield', caseG);
   const m = mat({ map: t, metalness: .8, roughness: .4 });
   const o = new THREE.Mesh(new THREE.BoxGeometry(.06, 5.5, 12.2), [m, m, MAT.steel, MAT.steel, MAT.steel, MAT.steel]);
   o.position.set(-12.64, 1.75, -8.5); o.castShadow = o.receiveShadow = true; ioShieldPart.add(o);
+  caseCode.ioShield = o;
 }
 const slotCoversPart = part('slotCovers', caseG);
-const gpuCovers = [];
+let gpuCovers = [];
 [4.1, 6.1, 8.1, 10.1, 12.1].forEach((z, i) => { const o = box(.08, 12, 1.9, MAT.steel, -12.66, 5, z, slotCoversPart); if (i < 2) gpuCovers.push(o); });
 
 /* ---------- материнская плата ---------- */
@@ -1231,7 +1239,7 @@ function renderInfo() {
     h = `<div class="kind">${CASE_INFO.kind}</div><h2>${CASE_INFO.name}</h2><p>${CASE_INFO.desc}</p>
       <h3>Детали корпуса</h3>${tagsHTML(CASE_PARTS)}
       ${I.board.installed ? `<h3>На материнской плате</h3>${tagsHTML(BOARD_PARTS)}` : ''}
-      <h3>Характеристики</h3>${specsHTML(CASE_INFO.specs)}`;
+      <h3>Характеристики</h3>${specsHTML(CASE_INFO.specs)}${CASE_INFO.credit || ''}`;
   } else if (selected.type === 'comp') {
     const id = selected.id, c = I[id], miss = missingNeeds(id);
     const st = c.installed ? `<span class="status ok">${c.cat === 'cable' ? 'Подключено' : 'Установлено · ' + slotLabel(id)}</span>`
@@ -2887,24 +2895,115 @@ function useGPUModel(model) {
   ENC.gpu.build = encGPUModel;
   if (ENC.gpu.model) { if (enc.model === ENC.gpu.model) encScene.remove(enc.model.root); ENC.gpu.model = null; if (mode === 'enc' && enc.id === 'gpu') encOpen('gpu'); }
 }
+// Реалистичный корпус (GLB) — «Computer case», Konstantin Ulyamaev, Sketchfab, CC BY 4.0. Уже в координатах сцены
+// (см, корпус на боку). Части названы по ролям: wallTop, wallBottom, wallFront, wallRear — стенки; shroudTop, shroudSide —
+// кожух блока питания; tray — поддон; frame, sidePanel — каркас; slot1…slot7 — заглушки слотов сверху вниз;
+// fanN_frame, fanN_blades, fanN_hub — три передних вентилятора. Задний вентилятор, стойки, корзина и заглушка I/O — из кода.
+function useCaseModel(model) {
+  const CM = {
+    metall: mat({ color: 0x1f252a, roughness: .55, metalness: .5 }),
+    plast: mat({ color: 0x2b3238, roughness: .6, metalness: .1 }),
+    metall_2: mat({ color: 0x8d969e, roughness: .35, metalness: .9 }),
+    glass: mat({ color: 0x9fb3c2, transparent: true, opacity: .2, roughness: .05, metalness: .1, depthWrite: false }),
+    topMesh: (() => { const t = meshTex.clone(); t.repeat.set(5, 3); t.needsUpdate = true; return mat({ map: t, roughness: .55, metalness: .5 }); })(),
+  };
+  CM.glass.userData.op = .2;
+  const meshesOf = name => { const a = []; model.getObjectByName(name)?.traverse(o => { if (o.isMesh) a.push(o); }); return a; };
+  model.traverse(o => {
+    if (!o.isMesh) return;
+    o.castShadow = o.receiveShadow = o.material.name !== 'glass';
+    if (o.material.name === 'rgb') { o.material = MAT.rgb; o.userData.keep = true; } // подсветка переливается при включении
+    else o.material = CM[o.material.name] || CM.metall;
+  });
+  caseG.add(model); model.updateMatrixWorld(true);
+
+  // старые стенки, дно и поддон из кода больше не нужны
+  for (const w of WALLS) w.meshes.forEach(o => o.parent.remove(o));
+  WALLS.length = 0;
+  caseG.remove(sidePanelBox);
+  caseCode.trayPlate.parent.remove(caseCode.trayPlate);
+  const wallFrom = (name, point, normal) => {
+    const meshes = meshesOf(name), ms = [];
+    for (const o of meshes) {
+      if (o.userData.keep) continue;
+      const m = o.material.clone(); m.transparent = true; m.userData.op = o.material.userData.op; o.material = m; ms.push(m);
+    }
+    WALLS.push({ m: ms, meshes, point: new V3(...point), n: new V3(...normal), op: 1 });
+  };
+  wallFrom('wallTop', [0, 0, -19.2], [0, 0, -1]);
+  wallFrom('wallBottom', [0, 0, 26.4], [0, 0, 1]);
+  wallFrom('wallFront', [28.6, 0, 0], [1, 0, 0]);
+  wallFrom('wallRear', [-12.7, 0, 0], [-1, 0, 0]);
+  wallFrom('shroudTop', [0, 0, 16.2], [0, 0, 1]);
+  wallFrom('shroudSide', [0, 16.1, 0], [0, 1, 0]); // боковина кожуха: сверху почти прозрачна, видно блок питания
+  const partG = id => allParts.find(g => g.userData.part === id);
+  const own = o => { if (!o.userData.keep) o.material = o.material.clone(); }; // у деталей со справкой — свой материал для подсветки
+  for (const n of ['shroudTop', 'shroudSide']) shroudPart.attach(model.getObjectByName(n));
+  { const t = model.getObjectByName('tray'); partG('tray').attach(t); t.traverse(o => o.isMesh && own(o)); }
+
+  // заглушки слотов: модель вместо планок из кода; под видеокарту — вторая и третья
+  [...slotCoversPart.children].forEach(o => slotCoversPart.remove(o));
+  const slots = [1, 2, 3, 4, 5, 6, 7].map(i => model.getObjectByName('slot' + i));
+  for (const s of slots) { slotCoversPart.attach(s); s.traverse(o => o.isMesh && own(o)); }
+  gpuCovers = [slots[1], slots[2]];
+  gpuCovers.forEach(o => o.visible = !I.gpu.installed);
+
+  // три передних вентилятора из модели, задний — из кода, под решёткой задней стенки
+  for (const f of caseCode.frontFans) {
+    fansPart.remove(f);
+    for (let i = rotors.length - 1; i >= 0; i--) if (rotors[i].rotor.parent === f) rotors.splice(i, 1);
+  }
+  caseCode.rearFan.position.set(-11.2, 10, -10);
+  for (const k of [1, 2, 3]) {
+    const fr = model.getObjectByName(`fan${k}_frame`), bl = model.getObjectByName(`fan${k}_blades`), hub = model.getObjectByName(`fan${k}_hub`);
+    fansPart.attach(fr); fr.traverse(o => o.isMesh && own(o));
+    const pv = G(); pv.position.copy(new THREE.Box3().setFromObject(bl).getCenter(new V3()));
+    pv.rotation.y = Math.PI / 2; fansPart.add(pv); pv.updateMatrixWorld(true);
+    pv.attach(bl); pv.attach(hub); hub.traverse(o => o.isMesh && own(o));
+    rotors.push({ rotor: pv, owner: 'case' });
+  }
+
+  // корзина дисков — над дном модели; заглушка I/O — по вырезу задней стенки (16,6 × 3,6 см)
+  caseCode.cage[1].position.z = 25.9;
+  caseCode.cage[2].scale.z = .87; caseCode.cage[2].position.z = 21.3;
+  {
+    const W = 16.6, H = 3.6, k = 40, z0 = -9.05 - W / 2, y0 = 1.55 + H / 2;
+    const t = canvasTex(W * k, H * k, (c, w, h) => {
+      c.fillStyle = '#b9c1c8'; c.fillRect(0, 0, w, h); c.fillStyle = '#1a1f24';
+      // вырезы под разъёмы платы (как в io на плате: центр по z, высота по y)
+      [[-13.4, .6], [-13.4, 1.6], [-11.4, .6], [-11.4, 1.6], [-9.3, 1.1], [-7.2, .6], [-7.2, 1.6], [-5.2, 1.1], [-3.6, 1.1]]
+        .forEach(([z, y]) => { roundRect(c, (z - .75 - z0) * k, (y0 - y - .35) * k, 1.5 * k, .7 * k, 4); c.fill(); });
+    });
+    const o = new THREE.Mesh(new THREE.PlaneGeometry(W, H), mat({ map: t, metalness: .8, roughness: .4, side: THREE.DoubleSide }));
+    o.rotation.y = -Math.PI / 2; o.position.set(-12.64, 1.55, -9.05); o.castShadow = o.receiveShadow = true;
+    ioShieldPart.remove(caseCode.ioShield); ioShieldPart.add(o);
+  }
+  Object.assign(PARTS.fans, { desc: 'Три передних вентилятора затягивают холодный воздух, задний выдувает горячий. Воздух проходит через корпус спереди назад.' });
+  CASE_INFO.credit = '<p class="credit">3D-модель корпуса — <a href="https://sketchfab.com/3d-models/computer-case-ccc37c0378474983bf2dacdafa47ce1b" target="_blank" rel="noopener">«Computer case»</a>, Konstantin Ulyamaev, лицензия <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</p>';
+  CASE_INFO.specs = [['Формат', 'Mid-Tower'], ['Платы', 'ATX, mATX'], ['Вентиляторы', '4 × 120 мм'], ['Отсеки', '3,5″ в нижнем отсеке'], ['Видеокарта', 'до 40 см']];
+  renderInfo();
+}
+
 // Сначала обычный .glb (сайт на сервере, например GitHub Pages). Если его не получить — например, index.html открыт
-// с диска двойным кликом, и браузер запрещает fetch, — подключаем ту же модель скриптом models/gpu.js (base64).
+// с диска двойным кликом, и браузер запрещает fetch, — подключаем ту же модель скриптом models/*.js (base64).
 const loadScript = src => new Promise((ok, fail) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = fail; document.head.append(s); });
-(async () => {
+async function loadModel(name, b64var, use, what) {
   const isGlb = b => b && b.byteLength > 12 && new TextDecoder().decode(new Uint8Array(b, 0, 4)) === 'glTF';
   try {
     let buf = null;
-    try { const r = await fetch('models/gpu.glb'); if (r.ok) buf = await r.arrayBuffer(); } catch (e) {}
+    try { const r = await fetch(`models/${name}.glb`); if (r.ok) buf = await r.arrayBuffer(); } catch (e) {}
     if (!isGlb(buf)) {
-      await loadScript('models/gpu.js');
-      const bin = atob(window.GPU_GLB_B64), u8 = new Uint8Array(bin.length);
-      delete window.GPU_GLB_B64;
+      await loadScript(`models/${name}.js`);
+      const bin = atob(window[b64var]), u8 = new Uint8Array(bin.length);
+      delete window[b64var];
       for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
       buf = u8.buffer;
     }
-    new GLTFLoader().parse(buf, '', gl => useGPUModel(prepGPU(gl.scene)), err => console.warn('Модель видеокарты не разобралась, остаётся модель из кода.', err));
-  } catch (err) { console.warn('Модель видеокарты не загрузилась, остаётся модель из кода.', err); }
-})();
+    new GLTFLoader().parse(buf, '', gl => { try { use(gl.scene); } catch (err) { console.warn(`Модель ${what} не встроилась.`, err); } }, err => console.warn(`Модель ${what} не разобралась, остаётся модель из кода.`, err));
+  } catch (err) { console.warn(`Модель ${what} не загрузилась, остаётся модель из кода.`, err); }
+}
+loadModel('case', 'CASE_GLB_B64', useCaseModel, 'корпуса');
+loadModel('gpu', 'GPU_GLB_B64', s => useGPUModel(prepGPU(s)), 'видеокарты');
 
 /* ---------- камера ---------- */
 let viewTween = null;
@@ -2949,7 +3048,7 @@ renderer.setAnimationLoop(() => {
   for (const w of WALLS) {
     const out = tmp.copy(camera.position).sub(w.point).dot(w.n) > 0;
     w.op += ((out ? .1 : 1) - w.op) * Math.min(1, dt * 8);
-    w.m.opacity = w.op; w.m.depthWrite = w.op > .9;
+    for (const m of [].concat(w.m)) { m.opacity = w.op * (m.userData.op ?? 1); m.depthWrite = w.op > .9 && !m.userData.op; }
     for (const o of w.meshes) o.castShadow = w.op > .5;
   }
   for (const s of SLOTS) {

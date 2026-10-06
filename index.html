@@ -460,7 +460,18 @@ const PARTS = {
   pcie16_2:{ kind:'Слот расширения', name:'PCIe x16 — второй', desc:'Выглядит как основной, но подключён к чипсету и работает в режиме x4. Подходит для карты видеозахвата или переходника под накопитель.' },
   vrm:     { kind:'Питание процессора', name:'VRM и радиаторы', desc:'Цепи питания процессора. Они превращают 12 В от блока питания примерно в 1,2 В, которые нужны процессору. Транзисторы под радиаторами сильно греются под нагрузкой.', tip:'Цилиндры вокруг сокета — твердотельные конденсаторы: они сглаживают скачки напряжения.' },
   chipset: { kind:'Микросхема платы', name:'Чипсет B760', desc:'Помощник процессора. Через него подключены USB-порты, SATA, сеть, звук и второй слот PCIe.' },
-  io:      { kind:'Задняя панель', name:'Разъёмы I/O', desc:'Разъёмы, которые видны на задней стенке корпуса: USB, сетевой порт, аудио. Пластиковый кожух закрывает их электронику.' },
+  io:      { kind:'Задняя панель', name:'Разъёмы I/O', desc:'Разъёмы, которые выходят на заднюю стенку корпуса: USB, видеовыходы, сеть, антенны Wi-Fi и звук. Сверху их прикрывает пластиковый кожух.', tip:'Нажмите на разъём на задней стенке или в списке ниже, чтобы узнать, зачем он нужен.' },
+  ioUsb2:  { kind:'Задняя панель · USB', name:'USB 2.0', desc:'Чёрные порты USB со скоростью до 480 Мбит/с. Их хватает для клавиатуры, мыши, принтера и веб-камеры.', tip:'Медленные устройства подключают сюда, а быстрые синие и красные порты оставляют для флешек и дисков.' },
+  ioUsb5:  { kind:'Задняя панель · USB', name:'USB 5 Гбит/с', desc:'Синие порты USB 3.2 Gen 1 — в 10 раз быстрее USB 2.0. Подходят для флешек, внешних дисков и игровых контроллеров.', tip:'Цвет подсказывает скорость: чёрный — USB 2.0, синий — 5 Гбит/с, красный или бирюзовый — 10 Гбит/с и быстрее.' },
+  ioUsb10: { kind:'Задняя панель · USB', name:'USB 10 Гбит/с', desc:'Красный порт USB 3.2 Gen 2 — вдвое быстрее синего. Нужен для внешних SSD, которые копируют гигабайты за секунды.' },
+  ioUsbC:  { kind:'Задняя панель · USB', name:'USB Type-C', desc:'Овальный симметричный разъём: штекер вставляется любой стороной. К нему подключают телефоны, внешние SSD и современные гаджеты на скорости 10–20 Гбит/с.' },
+  ioHdmi:  { kind:'Задняя панель · видео', name:'HDMI', desc:'Видеовыход встроенной графики процессора. Передаёт изображение и звук на монитор или телевизор.', tip:'У процессора этой сборки нет встроенной графики, поэтому видеовыходы платы не работают. Монитор подключают к разъёмам видеокарты, иначе на экране будет «Нет сигнала».' },
+  ioDp:    { kind:'Задняя панель · видео', name:'DisplayPort', desc:'Второй видеовыход встроенной графики, его любят мониторы с высокой частотой обновления. У разъёма один скошенный угол, поэтому штекер входит только одной стороной.', tip:'У процессора этой сборки нет встроенной графики, поэтому монитор подключают к видеокарте, а не сюда.' },
+  ioLan:   { kind:'Задняя панель · сеть', name:'Сетевой порт 2,5 Гбит/с', desc:'Разъём RJ-45 для кабеля Ethernet от роутера. Проводной интернет стабильнее Wi-Fi: ему не мешают стены и соседние сети.', tip:'Зелёный и жёлтый индикаторы показывают, что кабель подключён и по нему идут данные.' },
+  ioWifi:  { kind:'Задняя панель · сеть', name:'Антенны Wi-Fi', desc:'Два позолоченных разъёма для антенн встроенного модуля Wi-Fi и Bluetooth. Антенны прикручивают на резьбу.', tip:'Без антенн беспроводная связь будет очень слабой.' },
+  ioAudio: { kind:'Задняя панель · звук', name:'Аудиоразъёмы 3,5 мм', desc:'Гнёзда различают по цвету: зелёный — колонки или наушники, розовый — микрофон, синий — линейный вход, оранжевый — центр и сабвуфер, чёрный — тыловые колонки.', tip:'Обычным колонкам и наушникам нужен только зелёный разъём.' },
+  ioOptical:{ kind:'Задняя панель · звук', name:'Оптический выход S/PDIF', desc:'Цифровой звук по оптическому кабелю — светом, а не электричеством. К нему подключают саундбар или ресивер домашнего кинотеатра.', tip:'Перед подключением снимают маленькую защитную заглушку.' },
+  ioFlash: { kind:'Задняя панель', name:'Кнопка BIOS FlashBack', desc:'Обновляет BIOS с флешки даже без процессора и памяти. Флешку вставляют в соседний USB-порт и нажимают кнопку.', tip:'Выручает, когда процессор вышел позже платы и старый BIOS его ещё не знает.' },
   atx24:   { kind:'Питание платы', name:'Разъём ATX 24-pin', desc:'Главный разъём питания платы. Сюда подключают самый широкий кабель от блока питания.' },
   eps:     { kind:'Питание процессора', name:'Разъём CPU 8-pin', desc:'Отдельный разъём питания процессора в верхнем углу платы. Без этого кабеля компьютер не запустится.' },
   sata:    { kind:'Накопители', name:'Порты SATA', desc:'Разъёмы для жёстких дисков, SATA-SSD и приводов. Они медленнее M.2, но подходят для больших архивов.' },
@@ -629,6 +640,109 @@ const ground = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), mat({ map: matT
 ground.rotation.x = -Math.PI / 2; ground.position.y = -3.4; ground.receiveShadow = true;
 scene.add(ground);
 
+/* ---------- разъёмы задней панели ---------- */
+// Разъёмы задней панели: [деталь, тип, z1, z2, y1, y2, цвет]. z — вдоль края платы (сверху вниз), y — высота над платой.
+// Передняя грань разъёмов — x = IO_FRONT, чуть дальше заглушки I/O: разъёмы проходят сквозь её вырезы.
+const IO_FRONT = -12.7;
+const IO_PORTS = [
+  ['ioUsb2', 'usbA', -14.8, -13.35, .15, .85, '#16191c'], ['ioUsb2', 'usbA', -14.8, -13.35, 1.0, 1.7, '#16191c'],
+  ['ioFlash', 'button', -14.5, -13.65, 2.0, 2.6],
+  ['ioHdmi', 'hdmi', -13.1, -11.5, .2, .8], ['ioDp', 'dp', -13.1, -11.5, 1.05, 1.72],
+  ['ioUsb5', 'usbA', -11.25, -9.8, .15, .85, '#2f6fe0'], ['ioUsb5', 'usbA', -11.25, -9.8, 1.0, 1.7, '#2f6fe0'],
+  ['ioUsb5', 'usbA', -9.55, -8.1, .15, .85, '#2f6fe0'], ['ioUsb5', 'usbA', -9.55, -8.1, 1.0, 1.7, '#2f6fe0'],
+  ['ioUsb10', 'usbA', -7.85, -6.4, .15, .85, '#d23a33'], ['ioLan', 'rj45', -7.95, -6.3, 1.0, 2.4],
+  ['ioUsbC', 'usbC', -6.05, -5.1, .3, .66],
+  ['ioWifi', 'sma', -5.9, -5.25, 1.0, 1.65], ['ioWifi', 'sma', -5.9, -5.25, 1.95, 2.6],
+  ['ioAudio', 'jack', -4.45, -3.6, 1.85, 2.6, '#e8862e'], ['ioAudio', 'jack', -4.45, -3.6, 1.0, 1.75, '#2a2e33'],
+  ['ioOptical', 'optical', -4.45, -3.6, .15, .9],
+  ['ioAudio', 'jack', -3.4, -2.55, 1.85, 2.6, '#3d8be0'], ['ioAudio', 'jack', -3.4, -2.55, 1.0, 1.75, '#7cc242'],
+  ['ioAudio', 'jack', -3.4, -2.55, .15, .9, '#e46aa6'],
+];
+const IO_PARTS = ['ioUsb2', 'ioUsb5', 'ioUsb10', 'ioUsbC', 'ioHdmi', 'ioDp', 'ioLan', 'ioWifi', 'ioAudio', 'ioOptical', 'ioFlash'];
+// лицевая сторона разъёма: 128 пикселей на сантиметр, левый край — меньший z
+const ioFaceMats = {};
+function ioFace(type, col, w, h) {
+  const key = type + col;
+  if (ioFaceMats[key]) return ioFaceMats[key];
+  const t = canvasTex(Math.round(w * 128), Math.round(h * 128), (c, W, H) => {
+    const steel = (x, y, ww, hh, r) => { const g = c.createLinearGradient(0, y, 0, y + hh); g.addColorStop(0, '#cfd5da'); g.addColorStop(1, '#8b949b'); c.fillStyle = g; roundRect(c, x, y, ww, hh, r); c.fill(); };
+    const hole = (x, y, ww, hh, r) => { c.fillStyle = '#07090b'; roundRect(c, x, y, ww, hh, r); c.fill(); };
+    const m = 8;
+    if (type === 'usbA') {
+      steel(0, 0, W, H, 6); hole(m, m, W - 2 * m, H - 2 * m, 3);
+      c.fillStyle = col; c.fillRect(m + 10, m + 8, W - 2 * m - 20, (H - 2 * m) * .36);
+      c.fillStyle = '#d9a957'; for (let i = 0; i < 4; i++) c.fillRect(m + 22 + i * (W - 2 * m - 44) / 3 - 6, m + 8 + (H - 2 * m) * .36 - 5, 12, 5);
+    } else if (type === 'hdmi' || type === 'dp') {
+      steel(0, 0, W, H, 8);
+      c.fillStyle = '#07090b'; c.beginPath();
+      if (type === 'hdmi') { c.moveTo(m, m); c.lineTo(W - m, m); c.lineTo(W - m, H * .55); c.lineTo(W - m - 22, H - m); c.lineTo(m + 22, H - m); c.lineTo(m, H * .55); }
+      else { c.moveTo(m, m); c.lineTo(W - m, m); c.lineTo(W - m, H - m); c.lineTo(m + 26, H - m); c.lineTo(m, H - m - 26); }
+      c.closePath(); c.fill();
+      c.fillStyle = '#1d2226'; c.fillRect(m + 24, H * .36, W - 2 * m - 48, H * .2);
+      c.fillStyle = '#d9a957'; for (let i = 0; i < 9; i++) c.fillRect(m + 30 + i * (W - 2 * m - 60) / 8 - 3, H * .36, 6, 4);
+    } else if (type === 'rj45') {
+      steel(0, 0, W, H, 6); hole(m + 6, H * .2, W - 2 * m - 12, H * .72, 3);
+      c.fillStyle = '#07090b'; c.fillRect(W * .35, H * .86, W * .3, H * .1);
+      c.fillStyle = '#d9a957'; for (let i = 0; i < 8; i++) c.fillRect(W * .2 + i * W * .6 / 7 - 3, H * .24, 6, H * .14);
+      for (const [x, col2] of [[m + 6, '#51e37a'], [W - m - 34, '#ffb23a']]) { c.fillStyle = col2; roundRect(c, x, m, 28, H * .1, 3); c.fill(); }
+    } else if (type === 'usbC') {
+      steel(0, 0, W, H, H / 2); hole(m, m, W - 2 * m, H - 2 * m, (H - 2 * m) / 2);
+      c.fillStyle = '#2b3136'; roundRect(c, W * .22, H * .42, W * .56, H * .16, 4); c.fill();
+    } else if (type === 'jack') {
+      c.fillStyle = col; c.fillRect(0, 0, W, H);
+      c.fillStyle = 'rgba(255,255,255,.18)'; c.beginPath(); c.arc(W / 2, H / 2, H * .33, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#07090b'; c.beginPath(); c.arc(W / 2, H / 2, H * .22, 0, Math.PI * 2); c.fill();
+    } else if (type === 'optical') {
+      c.fillStyle = '#16191c'; c.fillRect(0, 0, W, H);
+      c.fillStyle = '#3a4045'; roundRect(c, W * .22, H * .22, W * .56, H * .56, 6); c.fill();
+      c.fillStyle = '#5b6268'; roundRect(c, W * .38, H * .3, W * .24, H * .1, 3); c.fill();
+    } else if (type === 'button') {
+      c.fillStyle = '#16191c'; c.fillRect(0, 0, W, H);
+      c.fillStyle = '#8c959c'; c.beginPath(); c.arc(W * .3, H / 2, H * .32, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#cfd5da'; c.font = `700 ${H * .3}px ${MONO}`; c.textBaseline = 'middle'; c.fillText('BIOS', W * .52, H / 2);
+    }
+  });
+  return (ioFaceMats[key] = mat({ map: t, roughness: .4, metalness: ['jack', 'optical', 'button'].includes(type) ? .1 : .6 }));
+}
+const IO_DEPTH = { usbA: 1.4, hdmi: 1.2, dp: 1.2, rj45: 2.1, usbC: .8, jack: 1.4, optical: 1.4, button: .5 };
+function buildIOPorts(board) {
+  const groups = Object.fromEntries(IO_PARTS.map(id => [id, part(id, board)]));
+  const shell = mat({ color: 0xa6aeb5, roughness: .38, metalness: .9 }), gold = MAT.gold;
+  for (const [id, type, z1, z2, y1, y2, col] of IO_PORTS) {
+    const g = groups[id], w = z2 - z1, h = y2 - y1, zc = (z1 + z2) / 2, yc = (y1 + y2) / 2;
+    if (type === 'sma') { // антенный разъём: резьбовой штуцер с гайкой
+      const r = w / 2;
+      const nut = cyl(r * .95, .25, gold, IO_FRONT + .55, yc, zc, g, 6); nut.rotation.z = Math.PI / 2;
+      const post = cyl(r * .55, .75, gold, IO_FRONT + .3, yc, zc, g, 18); post.rotation.z = Math.PI / 2;
+      const pin = cyl(r * .18, .02, mat({ color: 0x07090b }), IO_FRONT - .085, yc, zc, g, 12); pin.rotation.z = Math.PI / 2;
+      continue;
+    }
+    const d = IO_DEPTH[type];
+    const side = ['jack'].includes(type) ? mat({ color: new THREE.Color(col), roughness: .5 }) : ['optical', 'button'].includes(type) ? MAT.black : shell;
+    const o = new THREE.Mesh(new THREE.BoxGeometry(d, h, w), [side, ioFace(type, col || '', w, h), side, side, side, side]);
+    o.position.set(IO_FRONT + d / 2, yc, zc); o.castShadow = o.receiveShadow = true; g.add(o);
+  }
+}
+// заглушка I/O с настоящими вырезами под разъёмы: W×H см, центр (zc, yc)
+function ioShieldMesh(W, H, zc, yc) {
+  const k = 48, z0 = zc - W / 2, yTop = yc + H / 2;
+  const t = canvasTex(Math.round(W * k), Math.round(H * k), (c, w, h) => {
+    c.fillStyle = '#b9c1c8'; c.fillRect(0, 0, w, h);
+    c.strokeStyle = 'rgba(0,0,0,.18)'; c.lineWidth = 3; c.strokeRect(6, 6, w - 12, h - 12);
+    for (const [, type, z1, z2, y1, y2] of IO_PORTS) {
+      const m = .06, x = (z1 - m - z0) * k, y = (yTop - y2 - m) * k, ww = (z2 - z1 + 2 * m) * k, hh = (y2 - y1 + 2 * m) * k;
+      c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 4; roundRect(c, x - 3, y - 3, ww + 6, hh + 6, 6); c.stroke();
+      c.save(); c.globalCompositeOperation = 'destination-out';
+      if (type === 'sma') { c.beginPath(); c.arc(x + ww / 2, y + hh / 2, ww / 2, 0, Math.PI * 2); c.fill(); }
+      else { roundRect(c, x, y, ww, hh, 4); c.fill(); }
+      c.restore();
+    }
+  });
+  const o = new THREE.Mesh(new THREE.PlaneGeometry(W, H), mat({ map: t, alphaTest: .5, metalness: .8, roughness: .4, side: THREE.DoubleSide }));
+  o.rotation.y = -Math.PI / 2; o.position.set(-12.64, yc, zc); o.castShadow = o.receiveShadow = true;
+  return o;
+}
+
 /* ---------- корпус ---------- */
 const caseG = new THREE.Group(); scene.add(caseG);
 const WALLS = [];
@@ -648,7 +762,7 @@ meshTex.wrapS = meshTex.wrapT = THREE.RepeatWrapping; meshTex.repeat.set(8, 4);
 wall([[.2, YH, 45.9, 26.1, YM, CZ]], [26.2, 0, 0], [1, 0, 0], meshTex);
 // задняя стенка: вырезы под разъёмы платы, заглушки слотов и блок питания
 wall([
-  [-18, -14.6, -3.3, 20], [-14.6, -2.4, 4.5, 20], [-14.6, -2.4, -3.3, -1], [-2.4, 2.9, -3.3, 20],
+  [-18, -15, -3.3, 20], [-15, -2, 4.5, 20], [-15, -2, -3.3, -1], [-2, 2.9, -3.3, 20],
   [2.9, 14, 11, 20], [2.9, 14, -3.3, -1], [14, 17.4, -3.3, 20], [17.4, 26.6, 14.4, 20], [17.4, 26.6, -3.3, -1], [26.6, 27.7, -3.3, 20],
 ].map(([z1, z2, y1, y2]) => [.1, y2 - y1, z2 - z1, -12.55, (y1 + y2) / 2, (z1 + z2) / 2]), [-12.6, 0, 0], [-1, 0, 0]);
 wall([[38.6, 21, .2, CX, 9.5, 16.5]], [0, 0, 16.5], [0, 0, 1]);
@@ -692,10 +806,7 @@ const fansPart = part('fans', caseG);
 }
 const ioShieldPart = part('ioShield', caseG);
 {
-  const t = canvasTex(64, 256, (c, w, h) => { c.fillStyle = '#b9c1c8'; c.fillRect(0, 0, w, h); c.fillStyle = '#20262b'; [[10, 18], [40, 18], [10, 60], [40, 60], [25, 100], [10, 140], [40, 140], [25, 180], [25, 215]].forEach(([x, y]) => c.fillRect(x - 6, y, 18, 22)); });
-  const m = mat({ map: t, metalness: .8, roughness: .4 });
-  const o = new THREE.Mesh(new THREE.BoxGeometry(.06, 5.5, 12.2), [m, m, MAT.steel, MAT.steel, MAT.steel, MAT.steel]);
-  o.position.set(-12.64, 1.75, -8.5); o.castShadow = o.receiveShadow = true; ioShieldPart.add(o);
+  const o = ioShieldMesh(12.9, 5.5, -8.5, 1.75); ioShieldPart.add(o);
   caseCode.ioShield = o;
 }
 const slotCoversPart = part('slotCovers', caseG);
@@ -989,14 +1100,14 @@ function buildBoard() {
     const p = new THREE.Mesh(new RoundedBoxGeometry(4.5, .14, 4.5, 2, .05), [BM.sink, BM.sink, mat({ map: top, metalness: .7, roughness: .4 }), BM.sink, BM.sink, BM.sink]);
     p.position.set(5.5, .86, 8.5); p.castShadow = p.receiveShadow = true; g.add(p);
   }
-  { // разъёмы задней панели под кожухом
+  { // кожух над разъёмами задней панели
     const g = part('io', board);
-    rbox(2.6, 3.4, 12, .14, BM.ioCover, -10.8, 1.7, -8.5, g);
+    rbox(2.6, 3.4, 12.9, .14, BM.ioCover, -10.8, 1.7, -8.5, g);
     rbox(2.7, .24, 7.4, .08, BM.sink, -10.8, 3.45, -10.7, g);
     box(2.72, .26, .12, MAT.copper, -10.8, 3.45, -6.95, g);
     for (let i = 0; i < 6; i++) box(.04, .1, 2.4, mat({ color: 0x0b0e10, roughness: .8 }), -9.48, .7 + i * .45, -4.6, g); // прорези
-    [[-13.4,.6],[-13.4,1.6],[-11.4,.6],[-11.4,1.6],[-9.3,1.1],[-7.2,.6],[-7.2,1.6],[-5.2,1.1],[-3.6,1.1]].forEach(([z, y]) => box(.5, .55, 1.3, MAT.steel, -12.25, y, z, g));
   }
+  buildIOPorts(board); // сами разъёмы — каждый тип со своей справкой
   { // микросхемы: сеть, звук, BIOS, Super I/O
     const chip = (x, z, w, d, label, sub) => {
       box(w + .14, .03, d + .14, BM.legs, x, .015, z, board);
@@ -1440,8 +1551,9 @@ function renderInfo() {
         : `<button class="btn btn-power" type="button" data-act="install">${c.cat === 'cable' ? 'Подключить автоматически' : 'Установить автоматически'}</button>`}`;
   } else {
     const p = PARTS[selected.id];
-    h = `<button class="link" type="button" data-back>← Весь корпус</button>
-      <div class="kind">${p.kind}</div><h2>${p.name}</h2><p>${p.desc}</p>${p.tip ? `<h3>Полезно знать</h3><p>${p.tip}</p>` : ''}`;
+    h = `${IO_PARTS.includes(selected.id) ? `<button class="link" type="button" data-part="io">← Разъёмы I/O</button>` : `<button class="link" type="button" data-back>← Весь корпус</button>`}
+      <div class="kind">${p.kind}</div><h2>${p.name}</h2><p>${p.desc}</p>${p.tip ? `<h3>Полезно знать</h3><p>${p.tip}</p>` : ''}
+      ${selected.id === 'io' ? `<h3>Разъёмы на панели</h3>${tagsHTML(IO_PARTS)}` : ''}`;
   }
   infoEl.innerHTML = h;
 }
@@ -2161,7 +2273,7 @@ function encBoard(m, layer) {
   const byId = id => mine.find(g => g.userData.part === id);
   const top = g => { const bb = new THREE.Box3().setFromObject(g); return [(bb.min.x + bb.max.x) / 2, bb.max.y + .05, (bb.min.z + bb.max.z) / 2]; };
   m.add(b);
-  const groups = [['socket'], ['dimm'], ['pcie16_1', 'pcie1', 'pcie16_2'], ['m2'], ['vrm'], ['chipset'], ['io'], ['atx24', 'eps'], ['sata'], ['battery'], ['qled']];
+  const groups = [['socket'], ['dimm'], ['pcie16_1', 'pcie1', 'pcie16_2'], ['m2'], ['vrm'], ['chipset'], ['io', ...IO_PARTS], ['atx24', 'eps'], ['sata'], ['battery'], ['qled']];
   const names = { pcie16_1: 'Слоты PCIe', atx24: 'Разъёмы питания' };
   const texts = {
     pcie16_1: 'Слоты расширения для видеокарты и других плат. Длинные — x16, короткий — x1. Верхний x16 подключён к процессору, остальные — к чипсету.',
@@ -3148,19 +3260,11 @@ function useCaseModel(model) {
     rotors.push({ rotor: pv, owner: 'case' });
   }
 
-  // корзина дисков — над дном модели; заглушка I/O — по вырезу задней стенки (16,6 × 3,6 см)
+  // корзина дисков — над дном модели; заглушка I/O — по вырезу задней стенки (16,6 × 3,6 см), с вырезами под разъёмы
   caseCode.cage[1].position.z = 25.9;
   caseCode.cage[2].scale.z = .87; caseCode.cage[2].position.z = 21.3;
   {
-    const W = 16.6, H = 3.6, k = 40, z0 = -9.05 - W / 2, y0 = 1.55 + H / 2;
-    const t = canvasTex(W * k, H * k, (c, w, h) => {
-      c.fillStyle = '#b9c1c8'; c.fillRect(0, 0, w, h); c.fillStyle = '#1a1f24';
-      // вырезы под разъёмы платы (как в io на плате: центр по z, высота по y)
-      [[-13.4, .6], [-13.4, 1.6], [-11.4, .6], [-11.4, 1.6], [-9.3, 1.1], [-7.2, .6], [-7.2, 1.6], [-5.2, 1.1], [-3.6, 1.1]]
-        .forEach(([z, y]) => { roundRect(c, (z - .75 - z0) * k, (y0 - y - .35) * k, 1.5 * k, .7 * k, 4); c.fill(); });
-    });
-    const o = new THREE.Mesh(new THREE.PlaneGeometry(W, H), mat({ map: t, metalness: .8, roughness: .4, side: THREE.DoubleSide }));
-    o.rotation.y = -Math.PI / 2; o.position.set(-12.64, 1.55, -9.05); o.castShadow = o.receiveShadow = true;
+    const o = ioShieldMesh(16.6, 3.6, -9.05, 1.55);
     ioShieldPart.remove(caseCode.ioShield); ioShieldPart.add(o);
   }
   Object.assign(PARTS.fans, { desc: 'Три передних вентилятора затягивают холодный воздух, задний выдувает горячий. Воздух проходит через корпус спереди назад.' });

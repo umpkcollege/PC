@@ -3,3 +3,6 @@
 models/_src/
 # копия страницы для Claude
 pc-workshop.html
+# зависимости для пересборки vendor/three.min.js
+node_modules/
+package-lock.json

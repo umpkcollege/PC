@@ -1415,37 +1415,110 @@ function buildCooler() {
   for (const k in P) g.add(P[k]);
   return g;
 }
+// Оперативная память DDR5: плата в плоскости yz, длина 13,3 см по z, контакты снизу; x — толщина.
+// Ключ-вырез между контактами смещён от центра (z ≈ 0,3…0,7), поэтому модуль входит только одной стороной.
+let ramMats = null;
+function ramMaterials() {
+  if (ramMats) return ramMats;
+  const pinTex = n => canvasTex(n * 8, 32, (c, w, h) => { c.fillStyle = '#1b2a22'; c.fillRect(0, 0, w, h); c.fillStyle = '#e2ad55'; for (let i = 0; i < n; i++) c.fillRect(i * 8 + 1.5, 0, 5, h); });
+  const gold = n => { const m = mat({ map: pinTex(n), roughness: .3, metalness: 1 }); return [m, m, MAT.gold, MAT.gold, MAT.gold, MAT.gold]; };
+  ramMats = {
+    pcb: mat({ color: 0x14191d, roughness: .6 }),
+    goldA: gold(80), goldB: gold(64),
+    spreader: mat({ map: brushedTex('#3a4249', 41), roughness: .38, metalness: .85 }),
+    label: mat({ roughness: .45, metalness: .3, map: canvasTex(1024, 200, (c, w, h) => {
+      c.fillStyle = '#20262b'; c.fillRect(0, 0, w, h);
+      c.fillStyle = '#e0975a'; c.beginPath(); c.moveTo(w * .66, 0); c.lineTo(w * .72, 0); c.lineTo(w * .64, h); c.lineTo(w * .58, h); c.fill();
+      c.fillStyle = '#e4e9ec'; c.font = `700 56px ${MONO}`; c.textBaseline = 'middle'; c.fillText('EDU MEMORY', 44, 70);
+      c.fillStyle = '#9aa6b0'; c.font = `500 32px ${MONO}`; c.fillText('DDR5-5600 · 16 GB · CL36 · 1.1V', 44, 140);
+      c.fillStyle = '#e4e9ec'; c.font = `700 40px ${MONO}`; c.textAlign = 'right'; c.fillText('DDR5', w - 40, 100);
+    }) }),
+    diffuser: mat({ color: 0xe6ecf0, roughness: .3, transparent: true, opacity: .85 }),
+  };
+  return ramMats;
+}
+function ramParts(withInside) {
+  const M = ramMaterials(), P = {};
+  // плата и контакты: две группы позолоченных полосок с ключом-вырезом между ними
+  P.pcb = G();
+  box(.12, 3.1, 13.3, M.pcb, 0, 1.55, 0, P.pcb);
+  const ga = new THREE.Mesh(new THREE.BoxGeometry(.14, .34, 6.8), M.goldA); ga.position.set(0, .17, -3.1); P.pcb.add(ga);
+  const gb = new THREE.Mesh(new THREE.BoxGeometry(.14, .34, 5.8), M.goldB); gb.position.set(0, .17, 3.6); P.pcb.add(gb);
+  // радиаторы: фигурный профиль со скошенным верхом, медная полоса и наклейка снаружи
+  const prof = new THREE.Shape();
+  prof.moveTo(-6.6, .5); prof.lineTo(6.6, .5); prof.lineTo(6.6, 3.05); prof.lineTo(5.6, 3.45); prof.lineTo(1.4, 3.45); prof.lineTo(.9, 3.2); prof.lineTo(-5.9, 3.2); prof.lineTo(-6.6, 2.9); prof.closePath();
+  const geo = new THREE.ExtrudeGeometry(prof, { depth: .1, bevelEnabled: true, bevelSize: .02, bevelThickness: .02, bevelSegments: 1 });
+  const spreader = side => { // профиль одинаковый с обеих сторон, наклейка и полоса — на наружной стороне
+    const g = G(), o = new THREE.Mesh(geo, M.spreader); o.rotation.y = -Math.PI / 2; o.position.x = side > 0 ? .24 : -.14; g.add(o);
+    const lab = new THREE.Mesh(new THREE.PlaneGeometry(9.6, 1.9), M.label); lab.rotation.y = side * Math.PI / 2; lab.position.set(side * .265, 1.75, -1.2); g.add(lab);
+    const cu = box(.02, .12, 12.4, MAT.copper, side * .265, 2.95, 0, g); cu.castShadow = false;
+    return g;
+  };
+  P.s1 = spreader(1); P.s2 = spreader(-1);
+  // рассеиватель подсветки поверх радиаторов
+  P.light = G();
+  const bar = box(.26, .26, 12.6, MAT.rgb, 0, 3.33, -.3, P.light); bar.userData.keep = true;
+  if (!withInside) return P;
+  P.chips = G();
+  const ct = chipTex('DDR5', '2 GB');
+  for (const s of [-1, 1]) for (let i = 0; i < 8; i++) { const o = chip(1.25, .1, 1.0, ct, s * .11, 1.75, -5.6 + i * 1.6, P.chips); o.rotation.z = -s * Math.PI / 2; }
+  P.pmic = G(); const pc = chip(.7, .1, .7, chipTex('PMIC', '5V→1.1V'), .11, 2.75, 5.85, P.pmic); pc.rotation.z = -Math.PI / 2;
+  return P;
+}
 function buildRAM() {
-  const g = new THREE.Group();
-  box(.12, 3.1, 13.3, MAT.pcbG, 0, 1.55, 0, g);
-  box(.14, .34, 6.8, MAT.gold, 0, .17, -3.1, g);
-  box(.14, .34, 5.8, MAT.gold, 0, .17, 3.6, g);
-  const label = canvasTex(1024, 220, (c, w, h) => {
-    c.fillStyle = '#272e34'; c.fillRect(0, 0, w, h);
-    c.fillStyle = '#e0975a'; c.beginPath(); c.moveTo(w * .62, 0); c.lineTo(w * .7, 0); c.lineTo(w * .6, h); c.lineTo(w * .52, h); c.fill();
-    c.fillStyle = '#e4e9ec'; c.font = `600 54px ${MONO}`; c.textBaseline = 'middle'; c.fillText('EDU MEMORY', 50, 80);
-    c.fillStyle = '#9aa6b0'; c.font = `500 34px ${MONO}`; c.fillText('DDR5-5600 · 16 GB · CL36', 50, 150);
-  });
-  const sp = mat({ color: 0x2d353c, metalness: .7, roughness: .45 }), lm = mat({ map: label, metalness: .4, roughness: .5 });
-  const s1 = new THREE.Mesh(new THREE.BoxGeometry(.1, 2.6, 13), [lm, sp, sp, sp, sp, sp]); s1.position.set(.13, 1.75, 0);
-  const s2 = new THREE.Mesh(new THREE.BoxGeometry(.1, 2.6, 13), sp); s2.position.set(-.13, 1.75, 0);
-  for (const s of [s1, s2]) { s.castShadow = s.receiveShadow = true; g.add(s); }
-  box(.34, .28, 12.8, MAT.rgb, 0, 3.2, 0, g);
+  const g = new THREE.Group(), P = ramParts(false);
+  for (const k in P) g.add(P[k]);
+  g.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
   return g;
 }
+// SSD M.2 2280: начало координат — середина нижней грани, контакты с −x, полукруглый вырез под винт с +x.
+let ssdMats = null;
+function ssdMaterials() {
+  if (ssdMats) return ssdMats;
+  const pins = canvasTex(32, 300, (c, w, h) => { c.fillStyle = '#121619'; c.fillRect(0, 0, w, h); c.fillStyle = '#e2ad55'; for (let i = 0; i < 30; i++) c.fillRect(0, i * 10 + 2, w, 6); });
+  ssdMats = {
+    pcb: mat({ color: 0x121619, roughness: .6 }),
+    pins: mat({ map: pins, roughness: .3, metalness: 1 }),
+    sticker: mat({ roughness: .45, metalness: .3, map: canvasTex(1280, 380, (c, w, h) => {
+      c.fillStyle = '#1c2227'; c.fillRect(0, 0, w, h);
+      c.fillStyle = '#e0975a'; c.fillRect(0, 0, 22, h);
+      c.fillStyle = '#e4e9ec'; c.textBaseline = 'middle'; c.font = `700 74px ${MONO}`; c.fillText('EDU NVMe', 60, 90);
+      c.fillStyle = '#e0975a'; c.font = `700 74px ${MONO}`; c.fillText('1 TB', 500, 90);
+      c.fillStyle = '#9aa6b0'; c.font = `500 36px ${MONO}`; c.fillText('PCIe 4.0 x4 · NVMe 2.0 · M.2 2280', 60, 190);
+      c.fillText('до 7000 МБ/с · S/N EDU-N1T7Q', 60, 250);
+      c.font = `500 26px ${MONO}`; c.fillText('3.3V ⎓ 2.5A   ·   Не снимать наклейку: это теплоотвод', 60, 320);
+      const q = rng(5); c.fillStyle = '#e4e9ec'; for (let y = 0; y < 14; y++) for (let x = 0; x < 14; x++) if (q() < .5 || x === 0 || y === 0 || (x < 4 && y < 4)) c.fillRect(1060 + x * 12, 100 + y * 12, 12, 12);
+    }) }),
+    copper: mat({ color: 0x9a6a3c, metalness: .8, roughness: .4 }),
+  };
+  return ssdMats;
+}
+function ssdParts(withInside) {
+  const M = ssdMaterials(), P = {};
+  // плата с вырезом-ключом M в контактах и полукруглым вырезом под винт
+  P.pcb = G();
+  const s = new THREE.Shape(), zs = z => -z; // контур в плоскости xz (y фигуры = −z)
+  s.moveTo(-4, zs(-1.1)); s.lineTo(-4, zs(.43)); s.lineTo(-3.55, zs(.43)); s.lineTo(-3.55, zs(.55)); s.lineTo(-4, zs(.55)); s.lineTo(-4, zs(1.1));
+  s.lineTo(4, zs(1.1)); s.lineTo(4, zs(.17)); s.absarc(4, 0, .17, -Math.PI / 2, Math.PI / 2, true); s.lineTo(4, zs(-1.1)); s.closePath();
+  const pcb = new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth: .08, bevelEnabled: false, curveSegments: 12 }), M.pcb);
+  pcb.rotation.x = -Math.PI / 2; pcb.castShadow = pcb.receiveShadow = true; P.pcb.add(pcb);
+  for (const [z1, z2] of [[-.95, .4], [.58, .95]]) { const g = new THREE.Mesh(new THREE.BoxGeometry(.48, .09, z2 - z1), [MAT.gold, MAT.gold, M.pins, M.pins, MAT.gold, MAT.gold]); g.position.set(-3.74, .045, (z1 + z2) / 2); P.pcb.add(g); }
+  for (let i = 0; i < 6; i++) box(.12, .05, .08, MAT.dark, -3.15, .105, -.75 + i * .3, P.pcb); // конденсаторы у разъёма
+  P.pmic = G(); chip(.55, .1, .55, chipTex('PMIC', '3.3V'), -2.85, .13, .55, P.pmic);
+  // наклейка с медным слоем поверх микросхем
+  P.sticker = G();
+  const st = new THREE.Mesh(new THREE.BoxGeometry(6.4, .03, 2.0), [M.copper, M.copper, M.sticker, M.copper, M.copper, M.copper]); st.position.set(.65, .245, 0); P.sticker.add(st);
+  if (withInside) {
+    P.ctrl = G(); chip(1.3, .14, 1.3, chipTex('CTRL', 'PCIe 4.0'), -1.8, .15, 0, P.ctrl);
+    P.dram = G(); chip(.85, .12, .85, chipTex('DRAM', '1 GB'), -.4, .14, 0, P.dram);
+    P.nand = G(); const nt = chipTex('NAND', '512 GB'); chip(1.7, .14, 1.5, nt, 1.2, .15, 0, P.nand); chip(1.7, .14, 1.5, nt, 3.05, .15, 0, P.nand);
+  } else box(6.2, .14, 1.8, MAT.dark, .65, .15, 0, P.sticker); // микросхемы под наклейкой
+  return P;
+}
 function buildSSD() {
-  const g = new THREE.Group(); // центр, нижняя грань
-  box(8, .08, 2.2, MAT.pcbK, 0, .04, 0, g);
-  box(.5, .09, 1.9, MAT.gold, -3.75, .045, 0, g);
-  const lab = canvasTex(512, 140, (c, w, h) => {
-    c.fillStyle = '#20262b'; c.fillRect(0, 0, w, h);
-    c.fillStyle = '#e0975a'; c.fillRect(0, 0, 14, h);
-    c.fillStyle = '#e4e9ec'; c.font = `700 34px ${MONO}`; c.textBaseline = 'middle'; c.fillText('EDU NVMe 1TB', 36, 50);
-    c.fillStyle = '#9aa6b0'; c.font = `500 22px ${MONO}`; c.fillText('PCIe 4.0 x4 · M.2 2280', 36, 100);
-  });
-  const lm = mat({ map: lab, roughness: .5 }), d = MAT.dark;
-  const chip = new THREE.Mesh(new THREE.BoxGeometry(6.6, .12, 1.9), [d, d, lm, d, d, d]);
-  chip.position.set(.4, .14, 0); chip.castShadow = true; g.add(chip);
+  const g = new THREE.Group(), P = ssdParts(false);
+  for (const k in P) g.add(P[k]);
+  g.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
   return g;
 }
 // Видеокарта: начало координат — середина контактов PCIe, x — вдоль карты (кронштейн при x ≈ −9.7), y — вверх от слота,
@@ -1601,23 +1674,87 @@ function buildGPU() {
   for (const k in P) g.add(P[k]);
   return g;
 }
+// Жёсткий диск 3,5″ (147 × 102 × 26 мм). Начало координат — середина нижней грани; x — длина (разъёмы с −x), z — ширина.
+// Литой гермоблок, крышка с винтами и наклейкой, снизу плата управления, на торце разъёмы SATA.
+let hddMats = null;
+function hddMaterials() {
+  if (hddMats) return hddMats;
+  const slot = (w, h, lKey) => mat({ roughness: .6, map: canvasTex(w, h, (c, W, H) => {
+    c.fillStyle = '#16191c'; c.fillRect(0, 0, W, H); c.fillStyle = '#030405';
+    c.fillRect(W * .08, H * .38, W * .84, H * .24);                         // щель с контактами
+    c.fillRect(lKey ? W * .08 : W * .84, H * .38, W * .08, H * .44);         // Г-образный ключ
+    c.fillStyle = '#d9a957'; for (let i = 0; i < (lKey ? 15 : 7); i++) c.fillRect(W * .12 + i * W * .76 / (lKey ? 15 : 7), H * .45, W * .02, H * .1);
+  }) });
+  hddMats = {
+    cast: mat({ color: 0x9aa3ab, roughness: .55, metalness: .8 }),
+    castDark: mat({ color: 0x7d868e, roughness: .6, metalness: .8 }),
+    cover: mat({ roughness: .3, metalness: .9, map: canvasTex(1024, 1024, (c, w, h) => { // тонкая шлифовка
+      const r = rng(31); c.fillStyle = '#c3cad0'; c.fillRect(0, 0, w, h);
+      for (let i = 0; i < 2600; i++) { c.fillStyle = r() < .5 ? `rgba(255,255,255,${r() * .05})` : `rgba(0,0,0,${r() * .035})`; c.fillRect(0, r() * h, w, 1); }
+    }) }),
+    label: mat({ roughness: .45, metalness: .2, map: canvasTex(900, 620, (c, w, h) => {
+      c.fillStyle = '#f1f3f4'; c.fillRect(0, 0, w, h);
+      c.fillStyle = '#22282d'; c.fillRect(0, 0, w, 120);
+      c.fillStyle = '#e4e9ec'; c.textBaseline = 'middle'; c.font = `700 60px ${MONO}`; c.fillText('EDU DRIVE', 40, 62);
+      c.fillStyle = '#e0975a'; c.font = `700 44px ${MONO}`; c.textAlign = 'right'; c.fillText('2 TB', w - 40, 62); c.textAlign = 'left';
+      c.fillStyle = '#22282d'; c.font = `600 32px ${MONO}`; c.fillText('7200 RPM · SATA 6 Gb/s · 256 MB', 40, 170);
+      c.font = `500 26px ${MONO}`;
+      ['MODEL: ED2000-7K256', 'S/N: EDU-7Q2K4F', 'DATE: 2026-05', '+5V 0.6A    +12V 0.45A'].forEach((s, i) => c.fillText(s, 40, 230 + i * 44));
+      const r = rng(23); let x = 40; while (x < 520) { const bw = 2 + (r() * 6 | 0); c.fillRect(x, 430, bw, 90); x += bw + 2 + (r() * 5 | 0); } // штрихкод
+      c.font = `500 22px ${MONO}`; c.fillText('EDU-7Q2K4F', 40, 545);
+      c.strokeStyle = '#22282d'; c.lineWidth = 4; roundRect(c, 600, 410, 250, 150, 12); c.stroke();
+      c.font = `600 22px ${MONO}`; c.fillText('Не закрывать', 625, 455); c.fillText('отверстие', 625, 487); c.fillText('сапуна →', 625, 519);
+    }) }),
+    pcb: mat({ color: 0x173326, roughness: .6 }),
+    data: slot(100, 60, false), power: slot(220, 60, true),
+  };
+  return hddMats;
+}
+function hddParts(withInside) {
+  const M = hddMaterials(), P = {};
+  // гермоблок: литое дно и стенки, крепёжные отверстия по бокам
+  P.base = G();
+  roundBox(14.7, .3, 10.2, .1, M.cast, 0, .35, 0, P.base); // дно над платой
+  for (const z of [-4.95, 4.95]) roundBox(14.7, 1.9, .3, .1, M.cast, 0, 1.25, z, P.base);
+  for (const x of [-7.2, 7.2]) roundBox(.3, 1.9, 10.2, .1, M.cast, x, 1.25, 0, P.base);
+  for (const sz of [-1, 1]) for (const x of [-5.6, -1.4, 4.6]) { const h = cyl(.22, .06, MAT.black, x, 1.0, sz * 5.12, P.base, 14); h.rotation.x = Math.PI / 2; }
+  // крышка: шлифованная сталь, выпуклый круг над пластинами, винты, наклейка и сапун
+  P.cover = G();
+  roundBox(14.5, .1, 10.0, .04, M.cover, 0, 2.25, 0, P.cover);
+  const dome = cyl(4.75, .05, M.cover, 2.2, 2.32, 0, P.cover, 64); dome.castShadow = false;
+  const lab = new THREE.Mesh(new THREE.PlaneGeometry(9.2, 6.3), M.label); lab.rotation.x = -Math.PI / 2; lab.position.set(-1.6, 2.36, .3); P.cover.add(lab);
+  for (const [x, z] of [[-7, -4.75], [-7, 4.75], [7, -4.75], [7, 4.75], [0, -4.75], [0, 4.75], [2.2, 0], [-4.4, 2.8]]) {
+    cyl(.24, .06, MAT.steel, x, 2.33, z, P.cover, 6);
+    box(.3, .02, .06, MAT.black, x, 2.37, z, P.cover);
+  }
+  cyl(.12, .02, MAT.black, 5.5, 2.31, 3.9, P.cover, 12); // сапун
+  // плата управления снизу: контроллер, кэш, драйвер мотора; на торце — разъёмы SATA и перемычки
+  P.pcb = G();
+  box(11.8, .1, 9.2, M.pcb, -1.1, .15, 0, P.pcb);
+  const under = (w, d, tex, x, z) => { const o = chip(w, .1, d, tex, x, .05, z, P.pcb); o.rotation.x = Math.PI; return o; };
+  under(1.6, 1.6, chipTex('MCU', 'SATA'), -2.2, -1.6); under(1.2, .9, chipTex('DRAM', '256 MB'), .2, -2.6); under(1.3, 1.3, chipTex('MOTOR', 'VCM'), 2.6, 1.6);
+  for (let i = 0; i < 6; i++) box(.2, .06, .12, BM.smdR, -4.8 + i * .35, .07, 2.8, P.pcb);
+  const conn = (w, m, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(.3, .6, w), [MAT.black, m, MAT.black, MAT.black, MAT.black, MAT.black]); o.position.set(-7.4, 1.4, z); o.castShadow = o.receiveShadow = true; P.pcb.add(o); };
+  conn(1.0, M.data, -.4); conn(2.2, M.power, 3.0);
+  box(.3, .5, .9, MAT.black, -7.4, 1.4, -1.6, P.pcb); for (let i = 0; i < 4; i++) box(.3, .06, .06, MAT.gold, -7.56, 1.4, -1.9 + i * .2, P.pcb); // перемычки
+  if (!withInside) return P;
+  // внутри гермоблока
+  P.spindle = G(); cyl(1.1, 1.6, MAT.steel, 2.2, 1.3, 0, P.spindle, 32); cyl(1.45, .1, MAT.steel, 2.2, 2.05, 0, P.spindle, 32);
+  const disk = mat({ metalness: .85, roughness: .2, map: canvasTex(512, 512, (c, w, h) => { // зеркальная пластина с дорожками
+    const g = c.createRadialGradient(w / 2, h / 2, 40, w / 2, h / 2, w / 2); g.addColorStop(0, '#e9edf0'); g.addColorStop(.6, '#c9d0d6'); g.addColorStop(1, '#eef1f3');
+    c.fillStyle = g; c.fillRect(0, 0, w, h); c.strokeStyle = 'rgba(80,90,100,.08)'; c.lineWidth = 1;
+    for (let r = 60; r < w / 2; r += 3) { c.beginPath(); c.arc(w / 2, h / 2, r, 0, Math.PI * 2); c.stroke(); }
+  }) });
+  P.p1 = G(); P.p2 = G(); cyl(4.6, .1, disk, 2.2, 1.1, 0, P.p1, 64); cyl(4.6, .1, disk, 2.2, 1.6, 0, P.p2, 64);
+  P.act = G();
+  cyl(.5, 1.5, MAT.steel, -4.4, 1.3, 2.8, P.act, 20);
+  for (const y of [1.35, 1.85]) { const arm = box(5.7, .05, .55, MAT.steel, -1.75, y, 1.7, P.act); arm.rotation.y = .393; box(.3, .08, .3, MAT.dark, .85, y, .65, P.act); }
+  box(1.6, .45, 1.8, MAT.dark, -5.7, 1.25, 3.3, P.act);
+  return P;
+}
 function buildHDD() {
-  const g = new THREE.Group(); // центр, нижняя грань; длинная сторона по x, разъёмы с −x
-  box(14.2, .3, 9.8, MAT.pcbG, .1, .15, 0, g);
-  const lab = canvasTex(736, 512, (c, w, h) => {
-    const gr = c.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#c9cfd4'); gr.addColorStop(1, '#9ea7ae');
-    c.fillStyle = gr; c.fillRect(0, 0, w, h);
-    c.strokeStyle = 'rgba(0,0,0,.18)'; c.lineWidth = 3; c.beginPath(); c.arc(w * .62, h * .5, 190, 0, Math.PI * 2); c.stroke();
-    roundRect(c, 40, 50, 420, 300, 12); c.fillStyle = '#22282d'; c.fill();
-    c.fillStyle = '#e4e9ec'; c.textBaseline = 'top'; c.font = `700 44px ${MONO}`; c.fillText('EDU DRIVE', 70, 80);
-    c.font = `600 30px ${MONO}`; c.fillStyle = '#e0975a'; c.fillText('2 TB · 7200 RPM', 70, 150);
-    c.fillStyle = '#9aa6b0'; c.font = `500 22px ${MONO}`; c.fillText('SATA 6 Gb/s · 256 MB cache', 70, 205); c.fillText('S/N EDU-7Q2K4F', 70, 245); c.fillText('5V 0.6A   12V 0.45A', 70, 285);
-  });
-  const al = mat({ color: 0xb4bcc3, metalness: .85, roughness: .4 }), lm = mat({ map: lab, metalness: .6, roughness: .45 });
-  const top = new THREE.Mesh(new THREE.BoxGeometry(14.7, 2.3, 10.2), [al, al, lm, al, al, al]);
-  top.position.set(0, 1.45, 0); top.castShadow = top.receiveShadow = true; g.add(top);
-  box(.3, .6, 1.0, MAT.black, -7.4, 1.4, -.4, g);
-  box(.3, .6, 2.0, MAT.black, -7.4, 1.4, 3.0, g);
+  const g = new THREE.Group(), P = hddParts(false);
+  for (const k in P) g.add(P[k]);
   return g;
 }
 
@@ -2384,83 +2521,30 @@ function encCooler(m, layer) {
   layer('Медное основание', 'Прижимается к крышке процессора через термопасту и собирает тепло. Медь проводит тепло почти вдвое лучше алюминия.', [1.8, .25, 1.8], [[P.base, [0, -2.6, 0]]]);
 }
 function encRAM(m, layer) {
-  const pcb = G();
-  box(.12, 3.1, 13.3, MAT.pcbG, 0, 1.55, 0, pcb);
-  box(.14, .34, 6.8, MAT.gold, 0, .17, -3.1, pcb); box(.14, .34, 5.8, MAT.gold, 0, .17, 3.6, pcb);
-  const chips = G(), ct = chipTex('DDR5', '2 GB');
-  for (const s of [-1, 1]) for (let i = 0; i < 8; i++) { const o = chip(1.25, .1, 1.0, ct, s * .11, 1.75, -5.6 + i * 1.6, chips); o.rotation.z = -s * Math.PI / 2; }
-  const pmic = G(); const pc = chip(.7, .1, .7, chipTex("PMIC", "5V→1.1V"), .11, 2.75, 5.85, pmic); pc.rotation.z = -Math.PI / 2;
-  const label = canvasTex(1024, 220, (c, w, h) => {
-    c.fillStyle = '#272e34'; c.fillRect(0, 0, w, h);
-    c.fillStyle = '#e0975a'; c.beginPath(); c.moveTo(w * .62, 0); c.lineTo(w * .7, 0); c.lineTo(w * .6, h); c.lineTo(w * .52, h); c.fill();
-    c.fillStyle = '#e4e9ec'; c.font = `600 54px ${MONO}`; c.textBaseline = 'middle'; c.fillText('EDU MEMORY', 50, 80);
-    c.fillStyle = '#9aa6b0'; c.font = `500 34px ${MONO}`; c.fillText('DDR5-5600 · 16 GB · CL36', 50, 150);
-  });
-  const sp = mat({ color: 0x2d353c, metalness: .7, roughness: .45 }), lm = mat({ map: label, metalness: .4, roughness: .5 });
-  const s1 = G(), s2 = G();
-  const a = new THREE.Mesh(new THREE.BoxGeometry(.1, 2.6, 13), [lm, sp, sp, sp, sp, sp]); a.position.set(.24, 1.75, 0); s1.add(a);
-  const b = new THREE.Mesh(new THREE.BoxGeometry(.1, 2.6, 13), sp); b.position.set(-.24, 1.75, 0); s2.add(b);
-  const light = G(); box(.5, .28, 12.8, mat({ color: 0xe6ecf0, roughness: .3, transparent: true, opacity: .85 }), 0, 3.2, 0, light);
-  layer('Радиаторы', 'Алюминиевые пластины с двух сторон отводят тепло от чипов и защищают их от царапин.', [.29, 2.9, -4.5], [[s1, [3.6, 0, 0]], [s2, [-3.6, 0, 0]]]);
-  layer('Подсветка', 'Светорассеиватель со светодиодами. На скорость не влияет, только на внешний вид.', [0, 3.34, 4], [[light, [0, 2.2, 0]]]);
-  layer('Чипы памяти', 'Микросхемы DRAM хранят данные в миллиардах крошечных конденсаторов. Заряд нужно постоянно обновлять, поэтому без питания всё стирается.', [.17, 1.75, 2.4], [[chips, [0, 0, 0]]]);
-  layer('Контроллер питания PMIC', 'В модулях DDR5 питание регулируется прямо на модуле, а не на материнской плате. Так напряжение стабильнее.', [.17, 2.75, 5.85], [[pmic, [0, 0, 0]]]);
-  layer('Плата и контакты', '288 позолоченных контактов. Вырез-ключ не даёт вставить модуль другой стороной или в слот другого поколения.', [.08, .2, -5.5], [[pcb, [0, 0, 0]]]);
+  const P = ramParts(true);
+  layer('Радиаторы', 'Алюминиевые пластины с двух сторон отводят тепло от чипов и защищают их от царапин. На наклейке — тип, частота, объём и тайминги.', [.27, 2.9, -4.5], [[P.s1, [3.6, 0, 0]], [P.s2, [-3.6, 0, 0]]]);
+  layer('Подсветка', 'Светорассеиватель со светодиодами. На скорость не влияет, только на внешний вид.', [0, 3.46, 4], [[P.light, [0, 2.2, 0]]]);
+  layer('Чипы памяти', 'Восемь микросхем DRAM с каждой стороны, по 2 ГБ — вместе 16 ГБ. Данные хранятся в миллиардах крошечных конденсаторов. Заряд нужно постоянно обновлять, поэтому без питания всё стирается.', [.17, 1.75, 2.4], [[P.chips, [0, 0, 0]]]);
+  layer('Контроллер питания PMIC', 'В модулях DDR5 питание регулируется прямо на модуле, а не на материнской плате. Так напряжение стабильнее.', [.17, 2.75, 5.85], [[P.pmic, [0, 0, 0]]]);
+  layer('Плата и контакты', '288 позолоченных контактов. Вырез-ключ смещён от центра: модуль не вставить другой стороной или в слот другого поколения — у DDR4 вырез в другом месте.', [.08, .2, -5.5], [[P.pcb, [0, 0, 0]]]);
 }
 function encSSD(m, layer) {
-  const pcb = G();
-  box(8, .08, 2.2, MAT.pcbK, 0, .04, 0, pcb); box(.5, .09, 1.9, MAT.gold, -3.75, .045, 0, pcb);
-  for (let i = 0; i < 8; i++) box(.12, .05, .08, MAT.dark, 3.4, .1, -.8 + i * .22, pcb);
-  const ctrl = G(); chip(1.3, .14, 1.3, chipTex('CTRL', 'PCIe 4.0'), -2.2, .15, 0, ctrl);
-  const nand = G(), nt = chipTex('NAND', '512 GB');
-  chip(1.7, .14, 1.5, nt, .6, .15, 0, nand); chip(1.7, .14, 1.5, nt, 2.6, .15, 0, nand);
-  const dram = G(); chip(.85, .12, .85, chipTex('DRAM', '1 GB'), -.9, .14, 0, dram);
-  const stk = G();
-  const lab = canvasTex(512, 140, (c, w, h) => {
-    c.fillStyle = '#20262b'; c.fillRect(0, 0, w, h); c.fillStyle = '#e0975a'; c.fillRect(0, 0, 14, h);
-    c.fillStyle = '#e4e9ec'; c.font = `700 34px ${MONO}`; c.textBaseline = 'middle'; c.fillText('EDU NVMe 1TB', 36, 50);
-    c.fillStyle = '#9aa6b0'; c.font = `500 22px ${MONO}`; c.fillText('PCIe 4.0 x4 · M.2 2280', 36, 100);
-  });
-  const lm = mat({ map: lab, roughness: .5 }), sd = mat({ color: 0x9a6a3c, metalness: .8, roughness: .4 });
-  const s = new THREE.Mesh(new THREE.BoxGeometry(6.6, .02, 1.9), [sd, sd, lm, sd, sd, sd]); s.position.set(.4, .24, 0); stk.add(s);
-  layer('Наклейка', 'Наклейка с медным слоем: показывает модель и немного распределяет тепло по поверхности.', [3.3, .26, .8], [[stk, [0, 3, 0]]]);
-  layer('Контроллер', 'Мозг накопителя: решает, в какие ячейки записать данные, равномерно изнашивает память и исправляет ошибки.', [-2.2, .23, -.5], [[ctrl, [0, 1.4, 0]]]);
-  layer('Флеш-память NAND', 'Хранит данные в ячейках, которые держат заряд без питания. Внутри микросхемы — больше сотни слоёв ячеек друг над другом.', [2.6, .23, .6], [[nand, [0, 1.4, 0]]]);
-  layer('Кэш DRAM', 'Небольшая быстрая память, в которой контроллер держит карту расположения данных. Ускоряет работу с мелкими файлами.', [-.9, .21, .35], [[dram, [0, 1.4, 0]]]);
-  layer('Плата и разъём M.2', 'Вырез на контактах — ключ M: он означает поддержку интерфейса PCIe NVMe. С другой стороны полукруглый вырез под винт.', [-3.75, .1, -.8], [[pcb, [0, 0, 0]]]);
+  const P = ssdParts(true);
+  layer('Наклейка', 'Наклейка с медным слоем: показывает модель и скорость и немного распределяет тепло по поверхности. Снимать её нельзя.', [3.3, .26, .8], [[P.sticker, [0, 3, 0]]]);
+  layer('Контроллер', 'Мозг накопителя: решает, в какие ячейки записать данные, равномерно изнашивает память и исправляет ошибки.', [-1.8, .23, -.5], [[P.ctrl, [0, 1.4, 0]]]);
+  layer('Флеш-память NAND', 'Хранит данные в ячейках, которые держат заряд без питания. Внутри микросхемы — больше сотни слоёв ячеек друг над другом.', [3.05, .23, .6], [[P.nand, [0, 1.4, 0]]]);
+  layer('Кэш DRAM', 'Небольшая быстрая память, в которой контроллер держит карту расположения данных. Ускоряет работу с мелкими файлами.', [-.4, .21, .35], [[P.dram, [0, 1.4, 0]]]);
+  layer('Питание PMIC', 'Получает 3,3 В из слота M.2 и делает из них напряжения для контроллера и памяти.', [-2.85, .19, .8], [[P.pmic, [0, 1.4, 0]]]);
+  layer('Плата и разъём M.2', 'Вырез в контактах — ключ M: он означает поддержку интерфейса PCIe NVMe. С другой стороны полукруглый вырез под винт.', [-3.75, .1, -.8], [[P.pcb, [0, 0, 0]]]);
 }
 function encHDD(m, layer) {
-  const al = mat({ color: 0xb4bcc3, metalness: .85, roughness: .4 });
-  const pcb = G(); box(14.2, .1, 9.8, MAT.pcbG, 0, .05, 0, pcb);
-  chip(1.6, .12, 1.6, chipTex('MCU', 'SATA'), -2, .15, -2, pcb); chip(1.2, .12, .9, chipTex('DRAM', '256M'), 1, .15, -2.6, pcb);
-  box(.4, .6, 1.0, MAT.black, -7.2, .35, -.4, pcb); box(.4, .6, 2.0, MAT.black, -7.2, .35, 3.0, pcb);
-  const base = G();
-  box(14.7, .25, 10.2, al, 0, .23, 0, base);
-  box(14.7, 2.1, .3, al, 0, 1.4, 4.95, base); box(14.7, 2.1, .3, al, 0, 1.4, -4.95, base);
-  box(.3, 2.1, 10.2, al, 7.2, 1.4, 0, base); box(.3, 2.1, 10.2, al, -7.2, 1.4, 0, base);
-  const spindle = G(); cyl(1.1, 1.7, MAT.steel, 2.2, 1.2, 0, spindle, 32); cyl(1.45, .12, MAT.steel, 2.2, 2.0, 0, spindle, 32);
-  const disk = mat({ color: 0xdfe4e8, metalness: 1, roughness: .07 });
-  const p1 = G(), p2 = G(); cyl(4.6, .1, disk, 2.2, .95, 0, p1, 64); cyl(4.6, .1, disk, 2.2, 1.45, 0, p2, 64);
-  const act = G();
-  cyl(.5, 1.6, MAT.steel, -4.4, 1.15, 2.8, act, 20);
-  for (const y of [1.2, 1.7]) { const arm = box(5.7, .05, .55, MAT.steel, -1.75, y, 1.7, act); arm.rotation.y = .393; box(.3, .08, .3, MAT.dark, 0.85, y, .65, act); }
-  box(1.6, .45, 1.8, MAT.dark, -5.7, 1.1, 3.3, act);
-  const cover = G();
-  const lab = canvasTex(736, 512, (c, w, h) => {
-    const gr = c.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#c9cfd4'); gr.addColorStop(1, '#9ea7ae');
-    c.fillStyle = gr; c.fillRect(0, 0, w, h);
-    roundRect(c, 40, 50, 420, 300, 12); c.fillStyle = '#22282d'; c.fill();
-    c.fillStyle = '#e4e9ec'; c.textBaseline = 'top'; c.font = `700 44px ${MONO}`; c.fillText('EDU DRIVE', 70, 80);
-    c.font = `600 30px ${MONO}`; c.fillStyle = '#e0975a'; c.fillText('2 TB · 7200 RPM', 70, 150);
-  });
-  const lm = mat({ map: lab, metalness: .6, roughness: .45 });
-  const cv = new THREE.Mesh(new THREE.BoxGeometry(14.7, .15, 10.2), [al, al, lm, al, al, al]); cv.position.y = 2.53; cover.add(cv);
-  layer('Крышка', 'Герметично закрывает блок с пластинами: внутрь не должна попасть ни одна пылинка.', [-5.5, 2.62, -4.2], [[cover, [0, 9, 0]]]);
-  layer('Магнитные пластины', 'Алюминиевые или стеклянные диски с магнитным слоем. Данные записаны на них концентрическими дорожками.', [6.6, 1.5, -1], [[p1, [0, 2.2, 0]], [p2, [0, 3.9, 0]]]);
-  layer('Блок магнитных головок', 'Рычаг с головками поворачивается катушкой в поле магнита. Головка летит на воздушной подушке в нескольких нанометрах над пластиной.', [-5.7, 1.35, 3.3], [[act, [-2.5, 1.6, 3.2]]]);
-  layer('Шпиндельный двигатель', 'Вращает пластины со скоростью 5400 или 7200 оборотов в минуту.', [2.2, 2.08, 1], [[spindle, [0, 0, 0]]]);
-  layer('Гермоблок', 'Литой алюминиевый корпус, в котором всё собрано. Тяжёлый и жёсткий, чтобы гасить вибрации.', [-7.2, 2.45, -2], [[base, [0, 0, 0]]]);
-  layer('Плата контроллера', 'Снаружи снизу. Управляет двигателем и головками и обменивается данными с компьютером через разъём SATA.', [-2, .2, -2], [[pcb, [0, -2.6, 0]]]);
+  const P = hddParts(true);
+  layer('Крышка', 'Стальная крышка на винтах герметично закрывает блок с пластинами: внутрь не должна попасть ни одна пылинка. Маленькое отверстие-сапун с фильтром выравнивает давление — его нельзя заклеивать.', [-5.5, 2.4, -4.2], [[P.cover, [0, 9, 0]]]);
+  layer('Магнитные пластины', 'Алюминиевые или стеклянные диски с магнитным слоем. Данные записаны на них концентрическими дорожками.', [6.6, 1.65, -1], [[P.p1, [0, 2.2, 0]], [P.p2, [0, 3.9, 0]]]);
+  layer('Блок магнитных головок', 'Рычаг с головками поворачивается катушкой в поле магнита. Головка летит на воздушной подушке в нескольких нанометрах над пластиной.', [-5.7, 1.5, 3.3], [[P.act, [-2.5, 1.6, 3.2]]]);
+  layer('Шпиндельный двигатель', 'Вращает пластины со скоростью 5400 или 7200 оборотов в минуту.', [2.2, 2.1, 1], [[P.spindle, [0, 0, 0]]]);
+  layer('Гермоблок', 'Литой алюминиевый корпус, в котором всё собрано. Тяжёлый и жёсткий, чтобы гасить вибрации. По бокам и снизу — резьбовые отверстия для крепления в корзине.', [-7.2, 2.2, -2], [[P.base, [0, 0, 0]]]);
+  layer('Плата управления', 'Снаружи гермоблока, снизу. Контроллер принимает команды по SATA, кэш-память ускоряет запись, драйвер управляет мотором и головками. На торце — разъёмы данных и питания SATA.', [-7.5, 1.7, 3], [[P.pcb, [0, -3, 0]]]);
 }
 function encPSU(m, layer) {
   const P = psuParts('enc');

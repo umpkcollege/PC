@@ -38,6 +38,13 @@ button{font:inherit;color:inherit}
 .seg.cable{width:7px}
 
 .seg.done{background:var(--copper)}
+.stages{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 14px}
+.stages button{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;border:1px solid var(--line-2);background:var(--panel-2);font:600 13px/1.2 var(--body);text-align:left;cursor:pointer}
+.stages button b{display:grid;place-items:center;flex:none;width:22px;height:22px;border-radius:50%;background:var(--line);font:700 12px var(--mono)}
+.stages button[aria-pressed="true"]{border-color:var(--copper)}
+.stages button[aria-pressed="true"] b{background:var(--copper);color:var(--copper-ink)}
+.stages button.locked{opacity:.5}
+.stages button:focus-visible{outline:2px solid var(--copper);outline-offset:2px}
 #progText{font:500 12.5px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
 .actions{display:flex;gap:8px}
 .btn{font:600 14px var(--body);border-radius:10px;padding:9px 14px;border:1px solid var(--line-2);background:var(--panel-2);
@@ -231,7 +238,6 @@ body.test-mode .card .step,body.test-mode .tray .hint{display:none}
     <div class="mode" role="group" aria-label="Режим">
       <button type="button" data-mode="learn" aria-pressed="true">Обучение</button>
       <button type="button" data-mode="test" aria-pressed="false">Тест</button>
-      <button type="button" data-mode="desk" aria-pressed="false">Рабочее место</button>
       <button type="button" data-mode="enc" aria-pressed="false">Энциклопедия</button>
     </div>
     <div class="progress" aria-label="Прогресс сборки">
@@ -248,6 +254,10 @@ body.test-mode .card .step,body.test-mode .tray .hint{display:none}
   </header>
 
   <aside class="tray">
+   <div class="stages" id="stages" role="group" aria-label="Этапы урока">
+     <button type="button" data-stage="1" aria-pressed="true"><b>1</b>Системный блок</button>
+     <button type="button" data-stage="2" aria-pressed="false"><b>2</b>Рабочее место</button>
+   </div>
    <div id="deskTray" hidden>
     <h2 class="eyebrow">Устройства</h2>
     <p class="hint">Перетащите устройства на стол, затем подключите кабели к задней стенке компьютера. Готово: <b id="deskProg">0 из 11</b>.</p>
@@ -694,6 +704,7 @@ function part(id, parent, pickable = true) {
   parent.add(g); allParts.push(g); return g;
 }
 const rotors = [];
+const fanSpins = o => o === 'case' ? I.sysFan.installed : I[o].installed && (o !== 'cooler' || I.cpuFan.installed); // вентиляторам корпуса и кулера нужен свой кабель
 function roundedSquare(s, r) {
   const h = s / 2, sh = new THREE.Shape();
   sh.moveTo(-h + r, -h); sh.lineTo(h - r, -h); sh.quadraticCurveTo(h, -h, h, -h + r);
@@ -1372,7 +1383,7 @@ function psuParts(owner) {
   const lab = new THREE.Mesh(new THREE.PlaneGeometry(13, 7.8), M.label); lab.rotation.x = -Math.PI / 2; lab.position.set(0, 15.01, 0); P.shell.add(lab);
   const rear = new THREE.Mesh(new THREE.BoxGeometry(.12, 15, 8.6), [M.body, M.rear, M.body, M.body, M.body, M.body]); rear.position.set(-6.94, 7.5, 0); P.shell.add(rear);
   const inlet = new THREE.Mesh(new THREE.BoxGeometry(.4, 2.6, 2.2), [M.body, M.inlet, M.body, M.body, M.body, M.body]); inlet.position.set(-7.12, 9, -1.5); P.shell.add(inlet);
-  const sw = new THREE.Mesh(new THREE.BoxGeometry(.4, 1.4, 1.0), [M.body, M.switchM, M.body, M.body, M.body, M.body]); sw.position.set(-7.12, 5.6, -1.5); P.shell.add(sw);
+  const sw = new THREE.Mesh(new THREE.BoxGeometry(.4, 1.4, 1.0), [M.body, M.switchM, M.body, M.body, M.body, M.body]); sw.position.set(-7.12, 5.6, -1.5); sw.userData.psuSwitch = true; P.shell.add(sw);
   // крышка со стороны вентилятора: круглый вырез и проволочная решётка
   P.cover = G();
   const s = new THREE.Shape(); s.moveTo(-7, 0); s.lineTo(7, 0); s.lineTo(7, 15); s.lineTo(-7, 15); s.closePath();
@@ -2324,6 +2335,7 @@ function renderInfo() {
   let h = '';
   if (!selected) {
     h = `<div class="kind">${CASE_INFO.kind}</div><h2>${CASE_INFO.name}</h2><p>${CASE_INFO.desc}</p>
+      ${unitReady() ? '<button class="btn btn-power" type="button" data-act="stage2">Этап 2: рабочее место →</button>' : ''}
       <h3>Детали корпуса</h3>${tagsHTML(CASE_PARTS)}
       ${I.board.installed ? `<h3>На материнской плате</h3>${tagsHTML(BOARD_PARTS)}` : ''}
       <h3>Характеристики</h3>${specsHTML(CASE_INFO.specs)}${CASE_INFO.credit || ''}`;
@@ -2369,6 +2381,7 @@ function updateUI() {
   pb.disabled = !isDesk && busyPower;
   $('#powerLabel').textContent = on ? 'Выключить' : !isDesk && busyPower ? 'Проверка…' : 'Включить';
   gpuCovers.forEach(o => o.visible = !I.gpu.installed);
+  updateStages();
   renderInfo();
 }
 function refreshHints() {
@@ -2486,7 +2499,7 @@ function uninstall(id) {
   if (block.length) { toast(`Сначала снимите или отключите: ${block.map(b => lc(I[b].name)).join(', ')}.`, 'bad'); return; }
   if (it.slot && it.slot.occ === id) it.slot.occ = null;
   if (id === 'sataData') SLOT.hddData.occ = null;
-  it.installed = false; it.slot = null; ledFault = null; it.busy = true;
+  it.installed = false; it.slot = null; ledFault = null; it.busy = true; unitPassed = false;
   const mv = it.mover, from = mv.position.clone();
   const dir = it.cat === 'cable' ? new V3(...it.cable.spec.back).add(new V3(0, .6, 0)).normalize() : new V3(0, 1, 0);
   const fin = () => { it.busy = false; it.live = false; if (!it.installed) it.group.visible = false; };
@@ -2676,6 +2689,7 @@ infoEl.addEventListener('click', e => {
   else if (b.dataset.act === 'remove') uninstall(selected.id);
   else if (b.dataset.act === 'start-test') startTest();
   else if (b.dataset.act === 'start-fault') startFault();
+  else if (b.dataset.act === 'stage2') goStage(2);
   else if (b.dataset.act === 'abort-test') { test.active = false; test.done = false; resetBuild(); toast('Тест прерван.', 'info', 3000); }
 });
 infoEl.addEventListener('input', e => { if (e.target.id === 'studentName') test.name = e.target.value.trim(); });
@@ -2744,7 +2758,9 @@ async function pressPower() {
   if (!I.sysFan.installed) notes.push('Вентиляторы корпуса стоят: подключите их к SYS_FAN2, иначе горячий воздух останется внутри.');
   const front = [!I.usb3.installed && 'USB 3.0', !I.usbc.installed && 'USB-C', !I.hdAudio.installed && 'гнёзда для наушников'].filter(Boolean);
   if (front.length) notes.push(`Передние разъёмы без кабеля к плате работать не будут: ${front.join(', ')}.`);
-  toast(notes.length ? `Компьютер запустился. ${notes.join(' ')}` : 'Сборка прошла самотестирование POST: все компоненты найдены — на экране BIOS видно, как плата их определила. Следующий шаг — вкладка «Рабочее место»: подключим монитор, клавиатуру и мышь.', notes.length ? 'info' : 'ok', 11000);
+  if (complete) unitPassed = true;
+  const next = complete ? ' Этап 2 открыт: нажмите «2 · Рабочее место» над карточками — поставим этот блок на стол и подключим монитор, клавиатуру и мышь.' : '';
+  toast(notes.length ? `Компьютер запустился. ${notes.join(' ')}${next}` : `Сборка прошла самотестирование POST: все компоненты найдены — на экране BIOS видно, как плата их определила.${next}`, notes.length ? 'info' : 'ok', 12000);
   updateUI();
 }
 // что ещё не так в сборке: не установленные детали и кабели, память в одном канале, видеокарта не в основном слоте
@@ -2799,7 +2815,7 @@ function biosRender(temp) {
 }
 $('#powerBtn').addEventListener('click', pressPower);
 function resetBuild() {
-  powered = false; busyPower = false; spinTarget = 0; ledFault = null; allLeds(false); biosHide();
+  powered = false; busyPower = false; spinTarget = 0; ledFault = null; allLeds(false); biosHide(); unitPassed = false;
   tweens.length = 0;
   for (const id of ORDER) { const it = I[id]; Object.assign(it, { installed: false, slot: null, busy: false, live: false }); it.group.visible = false; }
   SLOTS.forEach(s => s.occ = null);
@@ -2821,13 +2837,17 @@ function shuffleCards(on) {
 }
 function setMode(m) {
   if (m === mode) return;
+  if (mode === 'desk' && desk.on) { desk.on = false; setScreen('off'); }
+  if (m === 'desk' && (powered || busyPower)) { powered = false; busyPower = false; spinTarget = 0; }
+  biosHide();
   mode = m;
   const encOn = m === 'enc', deskOn = m === 'desk', other = encOn || deskOn;
   document.body.classList.toggle('test-mode', m === 'test');
   document.body.classList.toggle('enc-mode', encOn);
-  document.querySelectorAll('.mode button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
-  $('#subtitle').textContent = { learn: 'Урок 1 · Собираем системный блок', test: 'Тест · Сборка системного блока',
-    enc: 'Энциклопедия · Из чего состоит компьютер', desk: 'Урок 2 · Подключаем рабочее место' }[m];
+  document.querySelectorAll('.mode button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === (deskOn ? 'learn' : m))));
+  $('#subtitle').textContent = { learn: 'Обучение · Этап 1 — собираем системный блок', test: 'Тест · Сборка системного блока',
+    enc: 'Энциклопедия · Из чего состоит компьютер', desk: 'Обучение · Этап 2 — подключаем рабочее место' }[m];
+  $('#stages').hidden = !(m === 'learn' || deskOn);
   $('#buildTray').hidden = other; $('#encTray').hidden = !encOn; $('#deskTray').hidden = !deskOn;
   $('.progress').hidden = other; $('.actions').hidden = encOn; $('#buildFoot').hidden = other; $('#deskFoot').hidden = !deskOn;
   $('#encControls').hidden = !encOn; $('#encLabels').hidden = !encOn;
@@ -2840,7 +2860,26 @@ function setMode(m) {
   else select(null);
   updateUI();
 }
-document.querySelectorAll('.mode button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+// «Обучение» — два этапа: 1 — собираем системный блок, 2 — ставим его на стол и подключаем рабочее место.
+// Этап 2 открывается, когда блок собран полностью и прошёл самотест; на столе стоит копия именно этого блока.
+let learnStage = 1, unitPassed = false;
+const unitReady = () => unitPassed && installedCount() === ORDER.length;
+document.querySelectorAll('.mode button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode === 'learn' && learnStage === 2 && unitReady() ? 'desk' : b.dataset.mode)));
+function goStage(n) {
+  if (n === 2 && !unitReady()) {
+    const n0 = installedCount();
+    toast(n0 < ORDER.length ? `Этап 2 откроется, когда системный блок будет собран: готово ${n0} из ${ORDER.length}.` : 'Блок собран — проверьте его: нажмите «Включить». Если самотест пройдёт, откроется этап 2.', 'info');
+    return;
+  }
+  learnStage = n; setMode(n === 2 ? 'desk' : 'learn');
+}
+$('#stages').addEventListener('click', e => { const b = e.target.closest('[data-stage]'); if (b) goStage(+b.dataset.stage); });
+function updateStages() {
+  document.querySelectorAll('#stages [data-stage]').forEach(b => {
+    b.setAttribute('aria-pressed', String(+b.dataset.stage === (mode === 'desk' ? 2 : 1)));
+    if (b.dataset.stage === '2') { b.classList.toggle('locked', !unitReady()); b.title = unitReady() ? '' : 'Откроется, когда системный блок будет собран и пройдёт самотест'; }
+  });
+}
 function startTest() {
   const inp = $('#studentName'); if (inp) test.name = inp.value.trim();
   resetBuild();
@@ -3239,14 +3278,11 @@ deskScene.add(new THREE.HemisphereLight(0xdbe6f0, 0x1a1410, .55));
 const deskCam = new THREE.PerspectiveCamera(40, 1, 1, 1200);
 const deskControls = new OrbitControls(deskCam, canvas);
 Object.assign(deskControls, { enableDamping: true, enabled: false, maxPolarAngle: Math.PI * .49, minDistance: 20, maxDistance: 420 });
-const DVIEWS = { front: { t: [6, 92, -2], p: [-38, 150, 135] }, back: { t: [52, 100, -25], p: [28, 112, -80] }, floor: { t: [25, 4, -28], p: [2, 50, -84] } };
+const DVIEWS = { front: { t: [6, 92, -2], p: [-38, 150, 135] }, back: { t: [50, 101, -27], p: [24, 114, -88] }, floor: { t: [25, 4, -28], p: [2, 50, -84] } };
 const deskM = {
-  dark: mat({ color: 0x1b2025, roughness: .45, metalness: .5 }),
   black: mat({ color: 0x111417, roughness: .5 }),
   white: mat({ color: 0xe3e7ea, roughness: .45 }),
   leg: mat({ color: 0x2a2f34, roughness: .35, metalness: .8 }),
-  rgb: mat({ color: 0x20262b, emissive: 0x000000, roughness: .4 }),
-  glass: mat({ color: 0x9fb3c2, transparent: true, opacity: .16, roughness: .05, metalness: .1, depthWrite: false }),
   cable: mat({ color: 0x15181b, roughness: .65 }),
 };
 // пол и стол
@@ -3270,77 +3306,94 @@ const deskM = {
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(4, 72, 4, deskM.leg, sx * 65, 36, sz * 31, deskScene);
   box(24, .3, 20, mat({ color: 0x1a1d21, roughness: .9 }), 28, 75.15, 18, deskScene); // коврик
 }
-// системный блок
+// системный блок: на столе стоит копия того, что собрали на этапе 1, — корпус поставлен вертикально.
+// Координаты сборки (корпус на боку) переходят в координаты стола: задняя стенка (−x) — к стене (−z),
+// верх корпуса (−z) — вверх, открытая сторона (+y) — к монитору (−x).
 const pcParts = []; // разъёмы и выключатель: подсказки и клики
-const PC = G(); PC.position.set(48, 75, -4); deskScene.add(PC);
-{
-  const cm = deskM.dark;
-  box(21, .6, 42, cm, 0, 44.7, 0, PC); box(21, .6, 42, cm, 0, .3, 0, PC); box(.6, 45, 42, cm, 10.2, 22.5, 0, PC);
-  const mt = meshTex.clone(); mt.repeat.set(2, 4); mt.needsUpdate = true;
-  box(21, 45, .8, mat({ map: mt, roughness: .55, metalness: .4 }), 0, 22.5, 20.6, PC);
-  cyl(.9, .3, MAT.steel, 0, 45.15, 16, PC, 24); cyl(1.05, .1, deskM.rgb, 0, 45.05, 16, PC, 24);
-  box(.3, 44, 41, deskM.glass, -10.35, 22.5, 0, PC).castShadow = false;
-  const backTex = canvasTex(420, 900, (c, w, h) => {
-    const X = x => (10.5 - x) * 20, Y = y => (45 - y) * 20;
-    c.fillStyle = '#1b2025'; c.fillRect(0, 0, w, h);
-    c.strokeStyle = '#2d353c'; c.lineWidth = 5; for (let r = 20; r < 120; r += 18) { c.beginPath(); c.arc(X(-3), Y(35), r, 0, Math.PI * 2); c.stroke(); }
-    c.fillStyle = '#aeb6bd'; c.fillRect(X(8.9), Y(42), X(4.5) - X(8.9), Y(26) - Y(42));
-    for (let i = 0; i < 7; i++) { c.fillStyle = i < 2 ? '#5d656c' : '#8f979e'; c.fillRect(X(9.2), Y(24 - i * 1.85), X(-1.2) - X(9.2), 30); }
-    c.fillStyle = '#121518'; c.fillRect(X(6.2), Y(9.8), X(-9.6) - X(6.2), Y(.8) - Y(9.8));
-    c.fillStyle = '#262c31'; for (let y = Y(9.4); y < Y(1.2); y += 14) for (let x = X(-1); x < X(-9.2); x += 14) { c.beginPath(); c.arc(x, y, 4.5, 0, Math.PI * 2); c.fill(); }
-    c.fillStyle = 'rgba(220,226,231,.75)'; c.font = `600 16px ${MONO}`; c.textAlign = 'center';
-    c.fillText('220V ~', X(2), Y(3.6)); c.fillText('I/O', X(6.7), Y(43)); c.fillText('O | I', X(5), Y(7.3));
-  });
-  const bm = mat({ map: backTex, roughness: .5, metalness: .4 });
-  const back = new THREE.Mesh(new THREE.BoxGeometry(21, 45, .8), [cm, cm, cm, cm, cm, bm]); back.position.set(0, 22.5, -20.6); back.castShadow = back.receiveShadow = true; PC.add(back);
-  // начинка за стеклом
-  box(.3, 30, 26, mat({ color: 0x182026, roughness: .6 }), 9.7, 29, -7, PC);
-  box(11, 3.5, 24, cm, 4.2, 21.4, -8.5, PC); box(.2, .6, 20, deskM.rgb, -1.4, 22.6, -8.5, PC);
-  box(13, 12, 5, MAT.alu, 3.2, 33, -8, PC);
-  for (const z of [5.4, 6.4]) box(.7, 4, 13, MAT.dark, 7.6 - (z - 5.4) * .9, 33, z, PC);
-  box(20.4, 10, 41, cm, 0, 5.6, 0, PC);
-  for (const [y, z] of [[13, 19.6], [28, 19.6], [35, -19.6]]) { const t = new THREE.Mesh(new THREE.TorusGeometry(5.3, .35, 10, 48), deskM.rgb); t.position.set(z > 0 ? 0 : -3, y, z); PC.add(t); }
-  const rf = new THREE.Mesh(new THREE.TorusGeometry(5.2, .35, 10, 48), deskM.rgb); rf.position.set(3.2, 33, -5.3); PC.add(rf);
-}
-const DSL = (id, kind, name, x, y, extra = {}) => ({ id, kind, name, port: true, plane: 'z', c: -25.3, x, y, hx: .65, hy: .28, ...extra });
+const PC = G(); deskScene.add(PC);
+const DESK_PC = new V3(55, 103.6, -14.25);
+const toDesk = (x, y, z) => new V3(DESK_PC.x - y, DESK_PC.y - z, DESK_PC.z + x);
+// Разъёмы на задней стенке. at() — середина лицевой грани разъёма в координатах сборки (берём с настоящих деталей),
+// hx, hy — половина размера на столе, vert — разъём стоит вертикально (панель платы): штекер поворачивается.
+const ioAt = (z1, z2, y1, y2) => () => [IO_FRONT, (y1 + y2) / 2, (z1 + z2) / 2];
+const gpuAt = y => () => [I.gpu.slot.x - 9.78, I.gpu.slot.ty + y, I.gpu.slot.z + .55];
+const DSL = (id, kind, name, at, hx, hy, vert = false) => ({ id, kind, name, port: true, plane: 'z', at, hx, hy, vert, x: 0, y: 0, c: 0 });
 const DS = [
   { id: 'monitorSpot', kind: 'monitorSpot', name: 'место для монитора', plane: 'y', c: 75, x: -5, z: -14, hx: 9, hz: 5, t: [-5, 75, -14], g: [26, 20] },
   { id: 'keyboardSpot', kind: 'keyboardSpot', name: 'место для клавиатуры', plane: 'y', c: 75, x: -5, z: 18, hx: 16, hz: 4, t: [-5, 75, 18], g: [46, 16] },
   { id: 'mouseSpot', kind: 'mouseSpot', name: 'место для мыши', plane: 'y', c: 75, x: 28, z: 18, hx: 5, hz: 5, t: [28, 75.3, 18], g: [13, 13] },
   { id: 'speakerSpot', kind: 'speakerSpot', name: 'место для колонок', plane: 'y', c: 75, x: -50, z: -10, hx: 5, hz: 5, t: [-50, 75, -10], g: [12, 12] },
-  ...[115.5, 114, 112.5, 111].map((y, i) => DSL('usb' + i, 'usb', 'порт USB', 54.7, y)),
-  DSL('lan', 'lan', 'сетевой разъём LAN', 54.7, 109.1, { hx: .75, hy: .65 }),
-  DSL('mbHdmi', 'mbHdmi', 'разъём HDMI материнской платы', 54.7, 106.9, { hx: .75 }),
-  DSL('audioBlue', 'audioBlue', 'голубой линейный вход', 53.6, 103.3, { hx: .35, hy: .35 }),
-  DSL('audioGreen', 'audioGreen', 'зелёный аудиовыход', 54.7, 103.3, { hx: .35, hy: .35 }),
-  DSL('audioPink', 'audioPink', 'розовый вход для микрофона', 55.8, 103.3, { hx: .35, hy: .35 }),
-  ...[56, 54.3, 52.6].map((x, i) => DSL('dp' + i, 'dp', 'разъём DisplayPort видеокарты', x, 96.6, { hx: .6, hy: .3 })),
-  DSL('gpuHdmi', 'gpuHdmi', 'разъём HDMI видеокарты', 50.6, 96.6, { hx: .75 }),
-  DSL('psuIn', 'psuIn', 'разъём питания блока питания', 50, 80.3, { hx: 1.3, hy: .8 }),
+  DSL('usb0', 'usb', 'порт USB 2.0', ioAt(-14.8, -13.35, .15, .85), .35, .72, true),
+  DSL('usb1', 'usb', 'порт USB 2.0', ioAt(-14.8, -13.35, 1.0, 1.7), .35, .72, true),
+  DSL('usb2', 'usb', 'порт USB 5 Гбит/с', ioAt(-11.25, -9.8, .15, .85), .35, .72, true),
+  DSL('usb3', 'usb', 'порт USB 5 Гбит/с', ioAt(-11.25, -9.8, 1.0, 1.7), .35, .72, true),
+  DSL('usb4', 'usb', 'порт USB 5 Гбит/с', ioAt(-9.55, -8.1, .15, .85), .35, .72, true),
+  DSL('usb5', 'usb', 'порт USB 5 Гбит/с', ioAt(-9.55, -8.1, 1.0, 1.7), .35, .72, true),
+  DSL('usb6', 'usb', 'порт USB 10 Гбит/с', ioAt(-7.85, -6.4, .15, .85), .35, .72, true),
+  DSL('lan', 'lan', 'сетевой разъём LAN', ioAt(-7.95, -6.3, 1.0, 2.4), .7, .83, true),
+  DSL('mbHdmi', 'mbHdmi', 'разъём HDMI материнской платы', ioAt(-13.1, -11.5, .2, .8), .3, .8, true),
+  DSL('mbDp', 'mbDp', 'разъём DisplayPort материнской платы', ioAt(-13.1, -11.5, 1.05, 1.72), .34, .8, true),
+  DSL('audioBlue', 'audioBlue', 'голубой линейный вход', ioAt(-3.4, -2.55, 1.85, 2.6), .38, .43, true),
+  DSL('audioGreen', 'audioGreen', 'зелёный аудиовыход', ioAt(-3.4, -2.55, 1.0, 1.75), .38, .43, true),
+  DSL('audioPink', 'audioPink', 'розовый вход для микрофона', ioAt(-3.4, -2.55, .15, .9), .38, .43, true),
+  ...[1.9, 3.8, 5.7].map((y, i) => DSL('dp' + i, 'dp', 'разъём DisplayPort видеокарты', gpuAt(y), .8, .33)),
+  DSL('gpuHdmi', 'gpuHdmi', 'разъём HDMI видеокарты', gpuAt(7.6), .8, .33),
+  DSL('psuIn', 'psuIn', 'разъём питания блока питания', () => [-12.82, 8, 20.5], 1.3, 1.1),
   ...[15, 23, 31, 39].map((x, i) => ({ id: 'sock' + i, kind: 'strip', name: 'розетка сетевого фильтра', port: true, plane: 'y', c: 4.2, x, z: -28, hx: 1.6, hz: 1.6 })),
 ];
 const DSLOT = Object.fromEntries(DS.map(s => [s.id, s]));
 DS.forEach(s => { s.occ = null; if (!s.t) s.t = s.plane === 'z' ? [s.x, s.y, s.c] : [s.x, s.c, s.z]; });
-// разъёмы на задней стенке
-{
-  const pm = c => mat({ color: c, roughness: .4, metalness: .3 });
-  const add = (s, w, h, m, round) => {
-    const o = round ? cyl(w / 2, .6, m, s.x - 48, s.y - 75, -21, PC, 16) : box(w, h, .6, m, s.x - 48, s.y - 75, -21, PC);
-    if (round) o.rotation.x = Math.PI / 2;
-    o.userData.dport = s.id; pcParts.push(o);
-  };
-  ['usb0', 'usb1', 'usb2', 'usb3'].forEach((id, i) => add(DSLOT[id], 1.3, .55, pm(i < 2 ? 0x2f6fd6 : 0x15181b)));
-  add(DSLOT.lan, 1.5, 1.3, pm(0x9aa3ab)); add(DSLOT.mbHdmi, 1.5, .55, pm(0x15181b));
-  add(DSLOT.audioBlue, .72, 0, pm(0x4aa3e0), true); add(DSLOT.audioGreen, .72, 0, pm(0x4cc46a), true); add(DSLOT.audioPink, .72, 0, pm(0xe07aa8), true);
-  ['dp0', 'dp1', 'dp2'].forEach(id => add(DSLOT[id], 1.2, .6, pm(0x15181b))); add(DSLOT.gpuHdmi, 1.5, .55, pm(0x15181b));
-  add(DSLOT.psuIn, 2.6, 1.6, pm(0x0d0f11));
+// выключатель блока питания — поверх такого же на копии блока, его можно нажимать
+const psuSwitch = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.4, .4), [MAT.black, MAT.black, MAT.black, MAT.black, MAT.black, psuMaterials().switchM]);
+psuSwitch.castShadow = true; psuSwitch.userData.dswitch = 'psu'; deskScene.add(psuSwitch); pcParts.push(psuSwitch);
+const portHits = {}, hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false });
+function placeDeskPorts() {
+  for (const s of DS) {
+    if (!s.at) continue;
+    const p = toDesk(...s.at()); s.x = p.x; s.y = p.y; s.c = p.z - .05; s.t = [p.x, p.y, p.z];
+    dglow[s.id].o.position.set(s.x, s.y, s.c - .2);
+    let h = portHits[s.id];
+    if (!h) { h = portHits[s.id] = new THREE.Mesh(new THREE.BoxGeometry(2 * s.hx, 2 * s.hy, .6), hitMat); h.userData.dport = s.id; deskScene.add(h); pcParts.push(h); }
+    h.position.set(s.x, s.y, p.z - .3);
+  }
+  const sw = toDesk(-12.82, 4.6, 20.5); psuSwitch.position.set(sw.x, sw.y, sw.z - .25);
+  // штекеры уже подключённых кабелей переезжают вместе с разъёмами (например, если видеокарту переставили)
+  for (const id of DCABLE_ORDER) { const it = DK[id]; if (it.installed && it.slot.at) { it.mover.position.copy(deskTarget(it.slot)); setDeskTube(it, true); } }
 }
-const psuSwitch = box(1.0, 1.5, .6, mat({ color: 0x15181b, roughness: .4 }), 5, 5.3, -21, PC);
-psuSwitch.userData.dswitch = 'psu'; pcParts.push(psuSwitch);
+let deskRotors = [];
+// копия собранного блока: корпус и все установленные детали со своими материалами; стенки непрозрачные, сбоку — стекло
+function rebuildDeskPC() {
+  PC.clear(); deskRotors = [];
+  const unit = G(), map = new Map(), mats = new Map(), wallMats = new Set(WALLS.flatMap(w => [].concat(w.m)));
+  const copy = src => {
+    const c = src.clone(true), a = [], b = [];
+    src.traverse(o => a.push(o)); c.traverse(o => b.push(o)); a.forEach((o, i) => map.set(o, b[i]));
+    c.visible = true; unit.add(c);
+  };
+  copy(caseG);
+  for (const id of ORDER) if (I[id].installed) copy(I[id].group);
+  const fix = m => {
+    if (mats.has(m)) return mats.get(m);
+    const c = m.clone(), op = m.userData.op;
+    if (wallMats.has(m)) { c.opacity = op ?? 1; c.transparent = op !== undefined; c.depthWrite = op === undefined; }
+    if (c.emissive && c.emissive.equals(COPPER)) c.emissiveIntensity = 0; // подсветка выбранной детали со сборки не нужна
+    mats.set(m, c); return c;
+  };
+  unit.traverse(o => {
+    if (o.userData.psuSwitch) o.visible = false;
+    if (o.isMesh && !o.userData.keep) o.material = Array.isArray(o.material) ? o.material.map(fix) : fix(o.material);
+  });
+  for (const r of rotors) if (r.owner !== 'enc' && map.has(r.rotor)) deskRotors.push({ rotor: map.get(r.rotor), owner: r.owner });
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(41.6, .3, 47.4), mat({ color: 0xa9bccb, transparent: true, opacity: .14, roughness: .04, metalness: .3, depthWrite: false }));
+  glass.position.set(7.6, 17.35, 4.55); unit.add(glass);
+  unit.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new V3(0, 0, 1), new V3(-1, 0, 0), new V3(0, -1, 0)));
+  unit.position.copy(DESK_PC); PC.add(unit);
+  placeDeskPorts();
+}
 // роутер и сетевой фильтр стоят заранее
 const routerLeds = [];
 {
-  const g = G(); g.position.set(-58, 75, -25); deskScene.add(g);
+  const g = G(); g.position.set(-58, 75, -23); deskScene.add(g);
   box(18, 3.2, 12, deskM.white, 0, 1.6, 0, g);
   for (const x of [-6, 0, 6]) { const a = cyl(.4, 14, deskM.white, x, 9, -5.5, g, 10); a.rotation.z = x * .03; }
   for (let i = 0; i < 4; i++) { const m = mat({ color: 0x223322, emissive: 0x3bff8a, emissiveIntensity: .2 }); box(.8, .3, .1, m, -4.5 + i * 3, 1.6, 6.05, g); routerLeds.push(m); }
@@ -3582,36 +3635,43 @@ const DK = {
     desc: 'Передаёт изображение и звук в цифровом виде. Один конец уже подключён к монитору.',
     where: 'В разъём HDMI на задней стенке компьютера.', tip: 'HDMI есть и на материнской плате, и на видеокарте. Подумайте, какой из них выводит изображение в этом компьютере.',
     whereShort: 'кабель HDMI подключают к разъёму HDMI', done: 'Кабель HDMI подключён.', kinds: ['gpuHdmi', 'mbHdmi'], needs: ['monitor'],
-    spec: { plug: [1.5, .6, 3], bd: [0, 0, -1], r: .35, from: [-11, 101.8, -17.4], fd: [0, 0, -1] } },
+    spec: { type: 'hdmi', srcPlug: 'hdmi', bd: [0, 0, -1], r: .33, from: [-11, 101.8, -17.4], fd: [0, 0, -1],
+      path: [[-11, 92, -24.5], [-9.5, 75.33, -27.5], [10, 75.33, -31.5], [35.5, 75.33, -33]] } },
   pcPower: { cat: 'cable', name: 'Питание ПК', acc: 'кабель питания ПК', kind: 'Сеть 220 В → блок питания', view: 'back',
     desc: 'Сетевой кабель с разъёмом C13. Его вилка уже вставлена в сетевой фильтр.',
     where: 'В разъём блока питания внизу задней стенки, рядом с выключателем.', tip: 'Кабели к компьютеру подключают и отключают только при выключенном питании.',
     whereShort: 'кабель питания вставляют в блок питания внизу задней стенки', done: 'Кабель питания вставлен в блок питания.', kinds: ['psuIn'], needs: [],
-    spec: { plug: [2.4, 1.4, 3.5], bd: [0, 0, -1], r: .42, from: 'strip', fd: [0, 1, 0] } },
+    spec: { type: 'c13', bd: [0, 0, -1], r: .42, from: 'strip', fd: [0, 1, 0], rise: false,
+      path: (a, b) => [[a.x, 16, -31], [(a.x + b.x) / 2, 45, -37.5], [b.x - .5, 72, -36]] } },
   monPower: { cat: 'cable', name: 'Питание монитора', acc: 'кабель питания монитора', kind: 'Монитор → сетевой фильтр', view: 'floor',
     desc: 'Один конец уже в мониторе. Вилку нужно вставить в сетевой фильтр под столом.',
     where: 'В свободную розетку сетевого фильтра под столом.', tip: 'Сетевой фильтр защищает технику от скачков напряжения и помех — это лучше, чем простой удлинитель.',
     whereShort: 'вилку монитора вставляют в сетевой фильтр под столом', done: 'Монитор подключён к сетевому фильтру.', kinds: ['strip'], needs: ['monitor'],
-    spec: { plug: [2.6, 3.2, 1.6], bd: [0, 1, 0], r: .42, from: [1, 101.8, -17.4], fd: [0, 0, -1] } },
+    spec: { type: 'schuko', srcPlug: 'c7', bd: [0, 1, 0], r: .42, from: [1, 101.8, -17.4], fd: [0, 0, -1],
+      path: (a, b) => [[1.5, 92, -24.5], [3, 75.42, -27.5], [14, 75.42, -33.2], [16.5, 74.6, -35.7], [b.x - 1.5, 35, -38], [b.x, 12, -31]] } },
   kbUsb: { cat: 'cable', name: 'USB клавиатуры', acc: 'клавиатуру', kind: 'Клавиатура → USB', view: 'back',
     desc: 'Клавиатура подключается по USB и получает по нему же питание.', where: 'В любой свободный порт USB на задней панели.',
     tip: 'Синие порты — USB 3.0, они быстрее. Клавиатуре и мыши хватит чёрных USB 2.0, а синие лучше оставить для флешек.',
     whereShort: 'USB подключают в плоские прямоугольные порты USB на задней панели платы', done: 'Клавиатура подключена к USB.', kinds: ['usb'], needs: ['keyboard'],
-    spec: { plug: [1.2, .5, 2.6], bd: [0, 0, -1], r: .25, from: [-5, 76, 10.9], fd: [0, 0, -1] } },
+    spec: { type: 'usb', bd: [0, 0, -1], r: .22, from: [-5, 76, 10.9], fd: [0, 0, -1],
+      path: [[-4.5, 75.22, 7.5], [11, 75.22, 2.5], [22.4, 75.22, -3], [23.4, 75.22, -20], [34, 75.22, -32.4]] } },
   mouseUsb: { cat: 'cable', name: 'USB мыши', acc: 'мышь', kind: 'Мышь → USB', view: 'back',
     desc: 'Мышь тоже подключается по USB.', where: 'В любой свободный порт USB на задней панели.', tip: 'Беспроводной мыши нужен маленький приёмник — его тоже вставляют в USB.',
     whereShort: 'USB подключают в плоские прямоугольные порты USB на задней панели платы', done: 'Мышь подключена к USB.', kinds: ['usb'], needs: ['mouse'],
-    spec: { plug: [1.2, .5, 2.6], bd: [0, 0, -1], r: .25, from: [28, 76.3, 12.5], fd: [0, 0, -1] } },
+    spec: { type: 'usb', bd: [0, 0, -1], r: .22, from: [28, 76.3, 12.5], fd: [0, 0, -1],
+      path: [[27.6, 75.52, 8.6], [24.2, 75.22, -1.5], [24.4, 75.22, -20], [35, 75.22, -32.9]] } },
   audio: { cat: 'cable', name: 'Аудиокабель', acc: 'колонки', kind: 'Колонки → аудиовыход', view: 'back',
     desc: 'Кабель с разъёмом 3,5 мм передаёт звук от звуковой карты к колонкам.', where: 'В зелёный разъём на задней панели — это линейный выход.',
     tip: 'Цвета аудиоразъёмов стандартные: зелёный — колонки и наушники, розовый — микрофон, голубой — линейный вход.',
     whereShort: 'аудиокабель подключают в круглый зелёный разъём на задней панели', done: 'Колонки подключены к зелёному аудиовыходу.', kinds: ['audioGreen'], needs: ['speakers'],
-    spec: { plug: [.6, .6, 3], bd: [0, 0, -1], r: .2, from: [32.6, 80, -15.5], fd: [0, 0, -1], color: 0x4cc46a } },
+    spec: { type: 'jack', srcPlug: 'jack', bd: [0, 0, -1], r: .18, from: [32.6, 80, -15.5], fd: [0, 0, -1], color: 0x4cc46a,
+      path: [[32.8, 77, -21], [33.5, 75.18, -23.5], [36.3, 75.18, -32.3]] } },
   lan: { cat: 'cable', name: 'Кабель Ethernet', acc: 'кабель Ethernet', kind: 'Роутер → сетевая карта', view: 'back',
     desc: 'Сетевой кабель «витая пара» с разъёмом RJ-45. Даёт быстрый и стабильный интернет без Wi-Fi. Один конец уже в роутере.',
     where: 'В квадратный сетевой разъём LAN на задней панели платы.', tip: 'Когда кабель подключён, на разъёме загораются зелёный и оранжевый огоньки.',
     whereShort: 'кабель Ethernet подключают в квадратный разъём LAN на задней панели', done: 'Интернет подключён кабелем Ethernet.', kinds: ['lan'], needs: [],
-    spec: { plug: [1.4, 1.2, 3], bd: [0, 0, -1], r: .3, from: [-54, 76.6, -31.1], fd: [0, 0, -1], color: 0x3d7fc2 } },
+    spec: { type: 'rj45', srcPlug: 'rj45', bd: [0, 0, -1], r: .28, from: [-53.5, 76.6, -29.1], fd: [0, 0, -1], color: 0x3d7fc2,
+      path: [[-52.5, 75.28, -33.6], [-20, 75.28, -34], [32, 75.28, -33.8]] } },
 };
 const DEV_ORDER = ['monitor', 'keyboard', 'mouse', 'speakers'], DCABLE_ORDER = ['hdmi', 'pcPower', 'monPower', 'kbUsb', 'mouseUsb', 'audio', 'lan'];
 const DESK_ORDER = [...DEV_ORDER, ...DCABLE_ORDER];
@@ -3619,6 +3679,7 @@ const desk = { on: false, stripOn: false, psuOn: false, sel: null, entered: fals
 const deskCount = () => DESK_ORDER.filter(id => DK[id].installed).length;
 const DSPECIAL = {
   'hdmi>dp': 'Это DisplayPort: у него один угол срезан, и штекер HDMI сюда не войдёт. Разъём HDMI на видеокарте — рядом.',
+  'hdmi>mbDp': 'Это DisplayPort материнской платы: штекер HDMI сюда не войдёт. И у этого процессора нет встроенной графики — монитор подключают к видеокарте.',
   'audio>audioPink': 'Розовый разъём — вход для микрофона. Колонки подключают в зелёный выход.',
   'audio>audioBlue': 'Голубой разъём — линейный вход для записи. Колонкам нужен зелёный выход.',
   'kbUsb>lan': 'Это сетевой разъём RJ-45, он квадратный и шире USB. Порты USB — плоские, выше.',
@@ -3627,56 +3688,102 @@ const DSPECIAL = {
   'pcPower>strip': 'Вилка этого кабеля уже в сетевом фильтре. Второй конец вставьте в блок питания внизу задней стенки компьютера.',
   'monPower>psuIn': 'Это вход блока питания компьютера. Вилку монитора вставляют в сетевой фильтр под столом.',
 };
-function plugGeo(spec) {
-  const [w, h, d] = spec.plug, bd = spec.bd, len = bd[1] ? h : d;
-  const geo = new THREE.BoxGeometry(w, h, d); geo.translate(bd[0] * len / 2, bd[1] * len / 2, bd[2] * len / 2);
-  return geo;
+// Штекеры кабелей рабочего места. Модель строится вдоль +z: z = 0 — торец, который входит в разъём, провод выходит по +z.
+// insert — на сколько штекер входит в разъём (металлическая часть прячется внутри), out — сколько остаётся снаружи.
+const dpMat = {
+  mold: mat({ color: 0x15181b, roughness: .55 }),
+  clear: mat({ color: 0xd8ecf2, roughness: .08, metalness: .1, transparent: true, opacity: .5, depthWrite: false }),
+  dark: mat({ color: 0x07090b, roughness: .8 }),
+};
+function deskPlug(type, color) {
+  const g = G(), mold = color ? mat({ color, roughness: .5 }) : dpMat.mold;
+  const relief = (r0, r1, z0, len) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, len, 16), mold); o.rotation.x = Math.PI / 2; o.position.z = z0 + len / 2; o.castShadow = true; g.add(o); };
+  const tube = (r, len, m, z0) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 20), m); o.rotation.x = Math.PI / 2; o.position.z = z0 + len / 2; o.castShadow = true; g.add(o); return o; };
+  const prism = (pts, depth, m, z0) => { // профиль в плоскости xy, вытянутый вдоль z
+    const sh = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y)));
+    const o = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false }), m); o.position.z = z0; o.castShadow = true; g.add(o); return o;
+  };
+  let insert = 0, L = 0;
+  if (type === 'hdmi') { // трапеция в металле, литой корпус, гибкий хвостовик
+    prism([[-.7, .225], [.7, .225], [.7, -.05], [.52, -.225], [-.52, -.225], [-.7, -.05]], 1.0, MAT.steel, 0);
+    box(1.1, .12, .02, dpMat.dark, 0, .02, -.005, g);
+    roundBox(2.0, .85, 2.3, .25, mold, 0, 0, 2.15, g); relief(.42, .33, 3.3, 1.3); insert = 1.0; L = 4.6;
+  } else if (type === 'usb') {
+    box(1.2, .45, 1.2, MAT.steel, 0, 0, .6, g); box(1.05, .2, .02, mold, 0, .08, -.005, g);
+    roundBox(1.6, .75, 2.0, .2, mold, 0, 0, 2.2, g); relief(.3, .24, 3.2, .9); insert = 1.2; L = 4.1;
+  } else if (type === 'rj45') { // прозрачная головка с позолоченными контактами и защёлкой, цветной колпачок
+    box(1.17, .8, 1.3, dpMat.clear, 0, 0, .65, g); box(.9, .06, .35, MAT.gold, 0, .34, .2, g);
+    const latch = box(.5, .08, 1.2, dpMat.clear, 0, -.48, .9, g); latch.rotation.x = -.18;
+    roundBox(1.3, 1.0, 1.8, .22, mold, 0, 0, 2.2, g); relief(.32, .27, 3.1, 1.0); insert = 1.3; L = 4.1;
+  } else if (type === 'jack') { // штекер 3,5 мм: металлический наконечник с изолирующими кольцами
+    tube(.175, 1.5, MAT.steel, 0); for (const z of [.35, .72]) tube(.18, .07, dpMat.dark, z);
+    tube(.3, .2, MAT.steel, 1.5); tube(.38, 2.0, mold, 1.7); relief(.3, .2, 3.7, .9); insert = 1.5; L = 4.6;
+  } else if (type === 'c13') { // IEC C13: корпус со скошенными нижними углами надевается на разъём блока питания
+    prism([[-1.25, .95], [1.25, .95], [1.25, -.4], [.8, -.95], [-.8, -.95], [-1.25, -.4]], 2.0, mold, 0);
+    for (const x of [-.55, 0, .55]) box(.2, .35, .02, dpMat.dark, x, x ? .15 : -.45, -.005, g);
+    roundBox(2.0, 1.5, 1.4, .3, mold, 0, 0, 2.6, g); relief(.5, .42, 3.3, 1.5); L = 4.8;
+  } else if (type === 'c7') { // «восьмёрка» к монитору
+    roundBox(1.2, .75, 2.0, .3, mold, 0, 0, 1.0, g); relief(.34, .3, 2.0, 1.0); insert = .9; L = 3.0;
+  } else if (type === 'schuko') { // евровилка с заземлением: круглый корпус входит в гнездо сетевого фильтра
+    tube(1.8, 1.1, mold, 0); tube(1.95, .3, mold, 1.1);
+    roundBox(2.6, 1.3, 1.8, .4, mold, 0, 0, 2.3, g);
+    relief(.55, .45, 3.2, 1.3); insert = 1.1; L = 4.5;
+  }
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return { g, insert, out: L - insert };
 }
+// повернуть модель штекера (собрана вдоль +z) так, чтобы провод выходил по dir: к стене (−z) или вверх (+y)
+function orientPlug(g, dir) { if (dir[2] < 0) g.rotation.y = Math.PI; else if (dir[1] > 0) g.rotation.x = -Math.PI / 2; }
 for (const id of DESK_ORDER) {
   const it = DK[id];
   if (it.cat === 'dev') { it.group = it.build(); it.mover = it.group; }
   else {
-    const g = G(), sp = it.spec, pm = mat({ color: sp.color || 0x15181b, roughness: .45 });
-    const plug = new THREE.Mesh(plugGeo(sp), pm); plug.castShadow = true; g.add(plug);
+    const g = G(), sp = it.spec;
+    const mover = G(), pm = deskPlug(sp.type, sp.color); orientPlug(pm.g, sp.bd); pm.g.position.addScaledVector(new V3(...sp.bd), -pm.insert);
+    mover.add(pm.g); g.add(mover); it.plugLen = pm.out;
     const tube = new THREE.Mesh(new THREE.BufferGeometry(), sp.color ? mat({ color: sp.color, roughness: .5 }) : deskM.cable); tube.castShadow = true; g.add(tube);
+    if (sp.srcPlug) { // второй конец уже вставлен в устройство
+      const sp2 = deskPlug(sp.srcPlug, sp.color); orientPlug(sp2.g, sp.fd);
+      sp2.g.position.set(...sp.from).addScaledVector(new V3(...sp.fd), -sp2.insert); g.add(sp2.g); it.srcLen = sp2.out;
+    }
     let plug2 = null;
-    if (sp.from === 'strip') { plug2 = new THREE.Mesh(plugGeo({ plug: [2.6, 3.2, 1.6], bd: [0, 1, 0] }), pm); g.add(plug2); }
-    it.group = g; it.mover = plug; it.plug2 = plug2; it.tube = tube;
+    if (sp.from === 'strip') { const s2 = deskPlug('schuko'); orientPlug(s2.g, [0, 1, 0]); s2.g.position.y = -s2.insert; plug2 = G(); plug2.add(s2.g); g.add(plug2); it.srcLen = s2.out; }
+    it.group = g; it.mover = mover; it.plug2 = plug2; it.tube = tube;
   }
   it.group.userData.desk = id; it.group.visible = false;
   it.group.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   deskScene.add(it.group);
   Object.assign(it, { installed: false, slot: null, busy: false, live: false });
 }
-// откуда идёт кабель
+// откуда идёт кабель: от штекера, уже вставленного в устройство, или от вилки в сетевом фильтре
 function cableFrom(it) {
   const sp = it.spec;
-  if (sp.from !== 'strip') return new V3(...sp.from);
+  if (sp.from !== 'strip') return new V3(...sp.from).addScaledVector(new V3(...sp.fd), it.srcLen || 0);
   let s = desk.pcSock;
   if (!s || (s.occ && s.occ !== 'pcPower')) s = DS.find(x => x.kind === 'strip' && !x.occ);
   desk.pcSock = s;
-  return new V3(s.x, 4.2 + 3.2, s.z);
+  return new V3(s.x, 4.2 + it.srcLen, s.z);
 }
+// Путь кабеля. Подключённый лежит на столе по своим точкам path (в обход монитора, колонки и клавиатуры),
+// у задней кромки стола поднимается по задней стенке блока к разъёму; кабели питания свисают с края стола к фильтру.
+const DESK_Y = 75;
 function deskRoute(it, routed) {
   const sp = it.spec, a = cableFrom(it), ad = new V3(...sp.fd), bd = new V3(...sp.bd);
-  const len = sp.bd[1] ? sp.plug[1] : sp.plug[2];
-  const b = it.mover.position.clone().addScaledVector(bd, len);
-  const pts = [a, a.clone().addScaledVector(ad, 3)];
+  const b = it.mover.position.clone().addScaledVector(bd, it.plugLen);
+  const pts = [a, a.clone().addScaledVector(ad, 1.5)];
   if (routed) {
-    const aFloor = a.y < 50, bFloor = b.y < 50;
-    if (aFloor !== bFloor) {
-      const fl = aFloor ? a : b, up = aFloor ? b : a;
-      const p1 = new V3(fl.x, 30, -38), p2 = new V3(up.x, 77, -38);
-      if (aFloor) pts.push(p1, p2); else pts.push(p2, p1);
-    } else if (!aFloor) pts.push(new V3(a.x, 76.4, Math.min(a.z - 4, -27)), new V3(b.x, 76.4, -31));
+    const P = (x, y, z) => pts.push(new V3(x, y, z));
+    (typeof sp.path === 'function' ? sp.path(a, b) : sp.path || []).forEach(p => P(...p));
+    if (sp.rise !== false && b.z < -20 && b.y > DESK_Y + 2) { const y0 = DESK_Y + sp.r; P(b.x - .4, y0, -33.6); P(b.x, (y0 + b.y) / 2, -33.9); } // вверх по задней стенке
+    pts.push(b.clone().addScaledVector(bd, 2.5), b);
   } else {
-    const mid = pts[1].clone().lerp(b, .5); mid.y = Math.min(mid.y, b.y) - 6; pts.push(mid);
+    const mid = pts[1].clone().lerp(b, .5); mid.y = Math.min(mid.y, b.y) - 6;
+    pts.push(mid, b.clone().addScaledVector(bd, 4), b);
   }
-  pts.push(b.clone().addScaledVector(bd, 5), b);
   return new THREE.CatmullRomCurve3(pts, false, 'centripetal');
 }
 function setDeskTube(it, routed) {
-  const geo = new THREE.TubeGeometry(deskRoute(it, routed), routed ? 120 : 60, it.spec.r, 8, false);
+  const geo = new THREE.TubeGeometry(deskRoute(it, routed), routed ? 220 : 80, it.spec.r, 10, false);
   it.tube.geometry.dispose(); it.tube.geometry = geo;
   if (it.plug2) it.plug2.position.set(desk.pcSock.x, 4.2, desk.pcSock.z);
 }
@@ -3739,6 +3846,7 @@ function deskInstall(id, s, from) {
   it.installed = true; it.slot = s; it.busy = true; s.occ = id;
   if (id === 'pcPower') { cableFrom(it); desk.pcSock.occ = 'pcPower'; }
   const isCable = it.cat === 'cable', bd = isCable ? new V3(...it.spec.bd) : new V3(0, 1, 0);
+  if (isCable) mv.rotation.z = s.vert ? Math.PI / 2 : 0;
   const start = from ? from.clone() : to.clone().addScaledVector(bd, isCable ? 8 : 14);
   const above = to.clone().addScaledVector(bd, isCable ? 2 : 3);
   mv.position.copy(start); it.group.visible = true; it.live = isCable;
@@ -3817,7 +3925,7 @@ function deskUpdateDrag(e) {
   if (!deskHit(home, F)) return;
   ddrag.slot = best; ddrag.verdict = best ? deskEval(ddrag.id, best) : null;
   const up = isCable ? new V3(...it.spec.bd) : new V3(0, 1, 0);
-  if (best && ddrag.verdict.ok) { ddrag.goal.copy(deskTarget(best)).addScaledVector(up, isCable ? 1.5 : it.lift); dglow[best.id].hover = 'ok'; }
+  if (best && ddrag.verdict.ok) { ddrag.goal.copy(deskTarget(best)).addScaledVector(up, isCable ? 1.5 : it.lift); dglow[best.id].hover = 'ok'; if (isCable) mv.rotation.z = best.vert ? Math.PI / 2 : 0; }
   else { ddrag.goal.copy(F).addScaledVector(up, isCable ? 4 : it.lift + 2); if (best) dglow[best.id].hover = 'bad'; }
   const rp = bp || F, rs = best || home;
   dring.position.copy(rp); if (rs.plane === 'y') { dring.rotation.set(-Math.PI / 2, 0, 0); dring.position.y += .3; } else { dring.rotation.set(0, Math.PI, 0); dring.position.z -= .3; }
@@ -3926,8 +4034,8 @@ function updateDeskUI() {
 function renderDeskInfo() {
   const id = desk.sel;
   if (!id) {
-    infoEl.innerHTML = `<div class="kind">Урок 2</div><h2>Рабочее место</h2>
-      <p>Системный блок собран и стоит на столе. Теперь подключим к нему монитор, клавиатуру, мышь, колонки, интернет и питание.</p>
+    infoEl.innerHTML = `<div class="kind">Этап 2 из 2</div><h2>Рабочее место</h2>
+      <p>Системный блок, который вы собрали на этапе 1, стоит на столе — корпус поставлен вертикально и закрыт стеклом. Теперь подключим к нему монитор, клавиатуру, мышь, колонки, интернет и питание.</p>
       <h3>Порядок</h3><ul class="rules">
         <li>Поставьте устройства на стол.</li>
         <li>Подключите кабели к задней стенке компьютера — кнопка «Задняя стенка ПК» под сценой.</li>
@@ -3977,10 +4085,10 @@ function deskThumbs() {
     for (const id of DEV_ORDER) { const g = DK[id].build(); if (id === 'speakers') g.children.slice(1).forEach(c => g.remove(c)); ts.add(g); imgs[id] = shot(g, [.4, .7, 1]); ts.remove(g); }
     setScreen('off');
     for (const id of DCABLE_ORDER) {
-      const sp = DK[id].spec, g = G(), pmat = mat({ color: sp.color || 0x15181b, roughness: .45 });
-      const pl = new THREE.Mesh(plugGeo({ ...sp, bd: [0, 1, 0], plug: [sp.plug[0], sp.plug[2], sp.plug[1]] }), pmat); g.add(pl);
-      const len = sp.plug[2], pts = [new V3(0, len, 0), new V3(0, len + 3, 0), new V3(3, len + 6, 0), new V3(9, len + 8, 0)];
-      g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, sp.r * 1.4, 8), sp.color ? mat({ color: sp.color, roughness: .5 }) : deskM.cable));
+      const sp = DK[id].spec, g = G();
+      const pl = deskPlug(sp.type, sp.color); orientPlug(pl.g, [0, 1, 0]); g.add(pl.g);
+      const len = pl.insert + pl.out, pts = [new V3(0, len, 0), new V3(0, len + 1.5, 0), new V3(1.2, len + 3, 0), new V3(3.5, len + 3.8, 0)];
+      g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, sp.r, 10), sp.color ? mat({ color: sp.color, roughness: .5 }) : deskM.cable));
       ts.add(g); imgs[id] = shot(g, [.9, .7, 1.2]); ts.remove(g);
     }
     pm.dispose(); tr.dispose(); tr.forceContextLoss();
@@ -3995,6 +4103,7 @@ function deskCardHTML(id) {
     <span class="meta"><span class="step">${it.kind.toUpperCase()}</span><span class="name">${it.name}</span><span class="state"></span></span></button>`;
 }
 function deskEnter() {
+  rebuildDeskPC();
   if (!desk.entered) {
     desk.entered = true;
     deskImgs = deskThumbs();
@@ -4008,7 +4117,7 @@ function deskEnter() {
     setDeskView('front', false);
   }
   deskSelect(desk.sel); updateDeskUI();
-  toast('Поставьте устройства на стол и подключите кабели. Начните с монитора.', 'info', 6000);
+  toast('Этап 2. Ваш системный блок уже на столе. Поставьте устройства и подключите кабели — начните с монитора.', 'info', 6000);
 }
 function deskFrame(dt, t) {
   deskControls.update();
@@ -4022,7 +4131,8 @@ function deskFrame(dt, t) {
     if (G.flashT >= 0) { const k = (now - G.flashT) / 1000; if (k < 1) { const f = .7 * (1 - k); if (f > op) { op = f; col = G.flashC; } } else G.flashT = -1; }
     G.o.visible = op > .01; G.m.opacity = op; G.m.color.copy(col);
   }
-  if (desk.on) { deskM.rgb.emissive.setHSL((t * .07) % 1, .85, .55); deskM.rgb.emissiveIntensity = 1.4; } else deskM.rgb.emissiveIntensity = 0;
+  if (desk.on) { MAT.rgb.emissive.setHSL((t * .07) % 1, .85, .55); MAT.rgb.emissiveIntensity = 1.4; } else MAT.rgb.emissiveIntensity = 0;
+  if (desk.on && !REDUCED) for (const r of deskRotors) if (fanSpins(r.owner)) r.rotor.rotation.z += dt * 28;
   routerLeds.forEach((m, i) => m.emissiveIntensity = i === 3 && DK.lan.installed && desk.on ? (Math.sin(t * 9 + i) > 0 ? 2 : .3) : 1.2);
   renderer.render(deskScene, deskCam);
 }
@@ -4192,8 +4302,7 @@ renderer.setAnimationLoop(() => {
     G.o.visible = op > .01; G.m.opacity = op; G.m.color.copy(col);
   }
   fanSpeed += (spinTarget - fanSpeed) * Math.min(1, dt * (spinTarget ? 1.2 : .7));
-  const spins = o => o === 'case' ? I.sysFan.installed : I[o].installed && (o !== 'cooler' || I.cpuFan.installed); // вентиляторам корпуса и кулера нужен свой кабель
-  if (!REDUCED || powered) for (const r of rotors) if (r.owner !== 'enc' && spins(r.owner)) r.rotor.rotation.z += fanSpeed * dt * (REDUCED ? 4 : 28);
+  if (!REDUCED || powered) for (const r of rotors) if (r.owner !== 'enc' && fanSpins(r.owner)) r.rotor.rotation.z += fanSpeed * dt * (REDUCED ? 4 : 28);
   if (powered) { MAT.rgb.emissive.setHSL((t * .07) % 1, .85, .55); MAT.rgb.emissiveIntensity = 1.6 * fanSpeed; }
   else MAT.rgb.emissiveIntensity = 0;
   if (ledFault) setLed(ledFault, Math.floor(t * 2.5) % 2 === 0);

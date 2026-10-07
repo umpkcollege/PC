@@ -86,7 +86,33 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 .toast::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;margin-top:6px;background:var(--copper)}
 .toast.ok{border-color:rgba(92,207,152,.45)} .toast.ok::before{background:var(--ok)}
 .toast.bad{border-color:rgba(255,123,110,.5)} .toast.bad::before{background:var(--bad)}
-.tip{position:absolute;pointer-events:none;padding:5px 9px;border-radius:7px;background:rgba(14,19,23,.92);border:1px solid var(--line-2);
+.bios{position:absolute;right:12px;bottom:52px;width:min(470px,calc(100% - 24px));max-height:calc(100% - 120px);display:flex;flex-direction:column;z-index:4;
+  border-radius:12px;background:#05070a;border:1px solid var(--line-2);box-shadow:0 16px 40px rgba(0,0,0,.5);overflow:hidden}
+.bios.min{width:auto}
+.bios.min .bios-screen{display:none}
+.bios-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 6px 6px 12px;font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--panel)}
+.bios-screen{min-height:0;overflow:auto;padding:12px 14px 10px;background:linear-gradient(160deg,#0b1d33,#071222);color:#d6e4f0;font:12px/1.5 var(--mono)}
+.b-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding-bottom:8px;margin-bottom:10px;border-bottom:1px solid rgba(120,170,220,.25)}
+.b-head b{color:#7cc4ff}
+.b-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.b-grid section{padding:7px 10px;border-radius:8px;background:rgba(120,170,220,.07);border:1px solid rgba(120,170,220,.14)}
+.b-grid .wide{grid-column:1/-1}
+.b-grid h4{margin:0 0 4px;font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:#7cc4ff}
+.b-row{display:flex;justify-content:space-between;gap:10px}
+.b-row span{color:#8fa8bf}
+.b-row b{font-weight:600;text-align:right}
+.b-row.dim b{color:#5d7286;font-weight:400}
+.b-row.warn b{color:#ffc46b}
+.b-row.bad b{color:#ff7b6e}
+.b-temp{font:600 26px/1.2 var(--mono);color:#9fe3b8}
+.b-temp.warn{color:#ffc46b}
+.b-temp.bad{color:#ff7b6e}
+.b-alert{margin-top:10px;padding:8px 10px;border-radius:6px;background:#6b1a14;color:#ffe1dc;font-weight:600;text-align:center}
+.b-foot{margin-top:10px;color:#5d7286;font-size:11px}
+.b-nosig{padding:48px 0;text-align:center;color:#8a97a2;font-size:14px}
+@media (max-width:560px){ .b-grid{grid-template-columns:minmax(0,1fr)} }
+.tip{position:absolute;
+pointer-events:none;padding:5px 9px;border-radius:7px;background:rgba(14,19,23,.92);border:1px solid var(--line-2);
   font:500 12.5px var(--body);transform:translate(14px,14px);white-space:nowrap;z-index:2}
 .stage-foot{position:absolute;left:12px;right:12px;bottom:10px;display:flex;justify-content:space-between;align-items:flex-end;gap:10px;
   color:var(--muted);font-size:12px;pointer-events:none}
@@ -108,6 +134,7 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 .specs{display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px 14px;font:13px/1.4 var(--mono);margin:0;padding:12px;border-radius:10px;background:var(--panel);border:1px solid var(--line)}
 .specs dt{color:var(--muted)} .specs dd{margin:0;font-variant-numeric:tabular-nums}
 .info .btn{width:100%;margin-top:16px}
+.info .btn + .btn{margin-top:8px}
 .legend{display:flex;flex-wrap:wrap;gap:6px}
 .tag{font:500 12.5px var(--body);padding:5px 10px;border-radius:999px;border:1px solid var(--line-2);background:var(--panel);cursor:pointer}
 .tag:hover{border-color:var(--copper);color:var(--copper)}
@@ -128,6 +155,7 @@ body.test-mode .card .step,body.test-mode .tray .hint{display:none}
 .errs{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:13.5px;color:var(--fg-2)}
 .errs li{padding:8px 10px;border-radius:8px;background:rgba(255,123,110,.08);border:1px solid rgba(255,123,110,.22)}
 .errs li.remark{background:var(--copper-soft);border-color:rgba(224,151,90,.3)}
+.errs li.fixed{background:rgba(92,207,152,.08);border-color:rgba(92,207,152,.28)}
 .rules{margin:0;padding-left:18px;color:var(--fg-2);display:grid;gap:4px}
 .field{display:grid;gap:6px;margin:16px 0 4px}
 .field label{font-size:13px;color:var(--muted)}
@@ -251,6 +279,10 @@ body.test-mode .card .step,body.test-mode .tray .hint{display:none}
     <div id="tip" class="tip" hidden></div>
     <div id="result" class="modal" role="dialog" aria-modal="true" aria-labelledby="resultTitle" hidden></div>
     <div id="encLabels" class="elabels" hidden></div>
+    <div id="bios" class="bios" hidden>
+      <div class="bios-bar"><span>Монитор · экран BIOS</span><button class="chip-btn" type="button" data-bios>Свернуть</button></div>
+      <div class="bios-screen" id="biosScreen" aria-live="polite"></div>
+    </div>
     <div id="encControls" class="enc-controls" hidden>
       <div class="range"><span>Собрано</span><input id="explode" type="range" min="0" max="100" value="0" aria-label="Разобрать деталь на части"><span>Разобрано</span></div>
       <button id="encToggle" class="chip-btn" type="button">Разобрать</button>
@@ -1906,7 +1938,7 @@ const CABLE = {
     route: [[4.6, 9.4, 17.9], [4.6, 3.5, 16.75, 'z'], [5.0, -1.9, 16.6], [5.6, -2.0, 13.5, 'y'], [9.5, -2.0, -2.6, 'y'], [13.3, -2.0, -3, 'y'], [14.6, -1.2, -3], [14.6, 1.2, -3, 'x'], [13.7, 4.3, -3]] },
   eps:    { plug: [2.5, 1.2, 1.2], back: [0, 1, 0], ribbon: [2.2, .45, 4], wdir: [1, 0, 0], color: 0x15181b, psuEnd: [1.7, 1.1], src: [1.6, 10, 23.5], srcDir: [1, 0, 0], srcN: 'z', fixed: 8,
     route: [[5.6, 9.8, 19.4], [5.8, 4, 17.35, 'z'], [6.2, -2.6, 16.6], [5.0, -2.75, 12, 'y'], [-6.0, -2.75, -13.5, 'y'], [-7.0, -2.6, -16.0], [-7.0, -1.4, -16.0], [-7.0, .6, -16.0, 'z'], [-7.8, 3.0, -15.6]] },
-  gpuPwr: { plug: [2.1, 1.3, .95], back: [0, 1, 0], ribbon: [1.9, .45, 4], wdir: [1, 0, 0], color: 0x15181b, psuEnd: [1.7, 1.1], src: [1.6, 6, 20.5], srcDir: [1, 0, 0], srcN: 'z', lead: 1.3, fixed: 7,
+  gpuPwr: { plug: [2.1, 1.3, .95], back: [0, 1, 0], ribbon: [1.9, .45, 4], wdir: [1, 0, 0], color: 0x15181b, psuEnd: [1.7, 1.1], src: [1.6, 6, 20.5], srcDir: [1, 0, 0], srcN: 'z', lead: 1.3, fixed: 7, shiftFrom: 7, shift: () => [0, 0, SLOT.gpuPwr.z - 4.2],
     route: [[6.4, 4.8, 19.8], [7.8, .5, 18.0, 'z'], [8.2, -2.3, 16.8], [9.5, -2.4, 12.5, 'y'], [13.2, -2.4, 3.6, 'y'], [14.6, -1.8, 2.85], [14.6, -.4, 2.85, 'x'], [14.6, 6, 3.2, 'x'], [14.0, 12.6, 5.4], [11.2, 15.6, 6.6], [10.0, 15.9, 5.6]] },
   hddPwr: { plug: [1.0, .7, 2.2], back: [-1, 0, 0], ribbon: [1.6, .22, 5], wdir: [0, 0, 1], color: 0x15181b, psuEnd: [1.4, 1.1], src: [1.6, 6, 24], srcDir: [1, 0, 0], srcN: 'z',
     route: [[5.2, 3.2, 24.7]] },
@@ -2079,10 +2111,12 @@ function cablePath(spec, plugPos, routed) {
   const len = by(spec) ? spec.plug[1] : spec.plug[0];
   const back = plugPos.clone().addScaledVector(bd, len);
   const pts = [src, src.clone().addScaledVector(sd, 1.5)], keys = spec.srcN ? [{ p: src, n: AXIS[spec.srcN] }] : [];
-  for (const [x, y, z, n] of routed ? spec.route : spec.route.slice(0, spec.fixed || 0)) {
-    const p = new V3(x, y, z); pts.push(p);
+  const sh = spec.shift ? spec.shift() : [0, 0, 0]; // shift — сдвиг конца маршрута, если разъём переехал вместе с деталью
+  (routed ? spec.route : spec.route.slice(0, spec.fixed || 0)).forEach(([x, y, z, n], i) => {
+    const p = new V3(x, y, z); if (i >= spec.shiftFrom) p.add(new V3(...sh));
+    pts.push(p);
     if (n) keys.push({ p, n: AXIS[n] });
-  }
+  });
   if (!routed) { const mid = pts[pts.length - 1].clone().lerp(back, .5); mid.y = Math.max(mid.y, back.y) + 3; pts.push(mid); }
   pts.push(back.clone().addScaledVector(bd, spec.lead ?? 1.8), back);
   return { curve: new THREE.CatmullRomCurve3(pts, false, 'centripetal'), keys };
@@ -2217,6 +2251,7 @@ let mode = 'learn';
 const test = { active: false, done: false, name: '', t0: 0, tEnd: 0, errors: [], remarks: [] };
 const isTest = () => mode === 'test';
 const inTest = () => mode === 'test' && test.active;
+const inFault = () => inTest() && test.kind === 'fault';
 const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmtTime = ms => { const s = Math.floor(ms / 1000); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
 function mistake(text) { if (!inTest()) return; test.errors.push(text); renderInfo(); }
@@ -2239,19 +2274,39 @@ const specsHTML = rows => `<dl class="specs">${rows.map(([k, v]) => `<dt>${k}</d
 const tagsHTML = ids => `<div class="legend">${ids.map(k => `<button class="tag" type="button" data-part="${k}">${PARTS[k].name}</button>`).join('')}</div>`;
 function renderTestInfo() {
   if (!test.active) {
-    infoEl.innerHTML = `<div class="kind">Режим теста</div><h2>Соберите компьютер сами</h2>
-      <p>Подсказок не будет: места установки не мигают, описаний деталей нет, карточки перемешаны. Соберите системный блок полностью и включите его.</p>
-      <h3>Что считается ошибкой</h3>
-      <ul class="rules"><li>деталь или кабель не в том месте;</li><li>деталь, которую ставят позже, — раньше времени;</li><li>включение незавершённой сборки.</li></ul>
+    infoEl.innerHTML = `<div class="kind">Режим теста</div><h2>Проверьте себя</h2>
+      <p>Подсказок не будет: места установки не мигают, описаний деталей нет, карточки перемешаны. Выберите задание.</p>
+      <h3>Сборка с нуля</h3>
+      <p>Соберите системный блок полностью и включите его. Ошибка — деталь или кабель не в том месте, деталь раньше времени, включение незавершённой сборки.</p>
+      <h3>Найди неисправность</h3>
+      <p>Компьютер уже собран, но в нём ${FAULT_N} неисправности. Включайте его, следите за индикаторами Q-LED, экраном BIOS и самим корпусом — и исправьте всё. Без штрафа — ${FAULT_N + 1} включения, каждое следующее считается ошибкой.</p>
       <h3>Замечания</h3>
       <p>Сборка заработает, но неоптимально: например, память не в слотах A2 + B2. Замечание считается как ошибка.</p>
       <div class="field"><label for="studentName">Имя и группа</label>
         <input id="studentName" type="text" autocomplete="off" maxlength="60" placeholder="Например: Петров А., группа ИС-21" value="${esc(test.name)}"></div>
       <h3>Оценка</h3>${specsHTML([['0–1 ошибка', '5'], ['2–3 ошибки', '4'], ['4–6 ошибок', '3'], ['7 и больше', '2']])}
-      <button class="btn btn-power" type="button" data-act="start-test">Начать тест</button>`;
+      <button class="btn btn-power" type="button" data-act="start-test">Сборка с нуля</button>
+      <button class="btn" type="button" data-act="start-fault">Найди неисправность</button>`;
     return;
   }
   const n = installedCount(), e = test.errors.length;
+  if (test.kind === 'fault') {
+    const sel = selected?.type === 'comp' && I[selected.id].installed
+      ? `<h3>Выбрано</h3><p>${I[selected.id].name}.</p><button class="btn" type="button" data-act="remove">${I[selected.id].cat === 'cable' ? 'Отключить' : 'Снять'}</button>`
+      : '<p>Нажмите на деталь или кабель в корпусе, чтобы снять их. Недостающее перетащите с карточек слева.</p>';
+    infoEl.innerHTML = `<div class="kind">Режим теста · найди неисправность</div><h2>Идёт тест</h2>
+      ${test.name ? `<p>${esc(test.name)}</p>` : ''}
+      <div class="stats">
+        <div class="stat"><b id="testTime">${fmtTime(performance.now() - test.t0)}</b><span>время</span></div>
+        <div class="stat ${e ? 'bad' : ''}"><b>${e}</b><span>ошибок</span></div>
+        <div class="stat ${test.powerOns > test.faults.length + 1 ? 'bad' : ''}"><b>${test.powerOns}/${test.faults.length + 1}</b><span>включений</span></div>
+      </div>
+      <p>В компьютере ${test.faults.length} неисправности. Включайте его и смотрите на индикаторы Q-LED, экран BIOS и сам корпус. Детали меняют только при выключенном компьютере.</p>
+      ${sel}
+      ${e ? `<h3>Ошибки</h3><ul class="errs">${test.errors.slice(-6).reverse().map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
+      <button class="btn" type="button" data-act="abort-test">Прервать тест</button>`;
+    return;
+  }
   let sel = '<p>Перетаскивайте детали и кабели в корпус. Когда всё будет на месте, нажмите «Включить».</p>';
   if (selected?.type === 'comp') {
     const c = I[selected.id];
@@ -2301,15 +2356,17 @@ function renderInfo() {
   infoEl.innerHTML = h;
 }
 function updateUI() {
+  const hide = inFault(); // в задании «найди неисправность» карточки и прогресс не подсказывают, чего не хватает
   for (const el of allCards()) {
     const id = el.dataset.id, c = I[id], miss = !c.installed && missingNeeds(id).length > 0;
-    el.classList.toggle('installed', c.installed);
-    el.classList.toggle('selected', selected?.type === 'comp' && selected.id === id);
-    el.classList.toggle('locked', miss || (isTest() && !c.installed));
-    el.querySelector('.state').textContent = c.installed ? (c.cat === 'cable' ? 'Подключено' : 'Установлено')
+    el.classList.toggle('installed', c.installed && !hide);
+    el.classList.toggle('selected', !hide && selected?.type === 'comp' && selected.id === id);
+    el.classList.toggle('locked', !hide && (miss || (isTest() && !c.installed)));
+    el.querySelector('.state').textContent = hide ? '' : c.installed ? (c.cat === 'cable' ? 'Подключено' : 'Установлено')
       : isTest() ? '—' : miss ? 'Пока рано' : (c.cat === 'cable' ? 'Не подключено' : 'На столе');
   }
   for (const el of $('#segs').children) el.classList.toggle('done', I[el.dataset.id].installed);
+  $('.progress').style.visibility = hide ? 'hidden' : '';
   const n = installedCount();
   $('#progText').textContent = `${n} из ${ORDER.length} готово`;
   const pb = $('#powerBtn');
@@ -2396,6 +2453,7 @@ function install(id, slot, from) {
   it.installed = true; it.slot = slot; it.busy = true; ledFault = null;
   if (id !== 'cooler' && id !== 'paste') slot.occ = id;
   if (id === 'sataData') SLOT.hddData.occ = id;
+  if (id === 'gpu') gpuMoved(slot);
   const lift = it.cat === 'cable' ? new V3(...it.cable.spec.back).multiplyScalar(6).add(new V3(0, 4, 0)) : new V3(0, 10, 0);
   const start = from ? from.clone() : to.clone().add(lift);
   const above = to.clone().add(it.cat === 'cable' ? new V3(...it.cable.spec.back).multiplyScalar(1.5) : new V3(0, 1.6, 0));
@@ -2411,6 +2469,19 @@ function install(id, slot, from) {
     flash(slot, GREEN);
   });
   refreshHints(); updateUI();
+}
+// Разъём питания видеокарты — на её торце: переезжает вместе с картой, если её поставить во второй слот.
+function gpuMoved(slot) { SLOT.gpuPwr.z = slot.z + .6; glow.gpuPwr.o.position.z = SLOT.gpuPwr.z; }
+// Деталь сразу на месте, без анимации: так задание «найди неисправность» получает уже собранный компьютер.
+function placeNow(id, slot) {
+  const it = I[id];
+  Object.assign(it, { installed: true, slot, busy: false, live: false });
+  if (id !== 'cooler' && id !== 'paste') slot.occ = id;
+  if (id === 'sataData') SLOT.hddData.occ = id;
+  if (id === 'gpu') gpuMoved(slot);
+  it.mover.position.copy(target(id, slot)); it.group.visible = true;
+  if (it.cat === 'cable') setTube(it, true);
+  if (id === 'paste') pasteShown(true);
 }
 const BLOCKERS = { board:['cpu','ram','ram2','ssd','gpu','atx24','eps','sataData','fpanel','usb3','usbc','hdAudio','sysFan'], cpu:['paste','cooler'], paste:['cooler'], cooler:['cpuFan'],
   psu:['atx24','eps','gpuPwr','hddPwr'], gpu:['gpuPwr'], hdd:['hddPwr','sataData'] };
@@ -2468,7 +2539,7 @@ function onCardDown(e) {
   const card = e.target.closest('.card'); if (!card || e.button > 0) return;
   const id = card.dataset.id;
   if (I[id].installed || I[id].busy || powered || busyPower) return;
-  if (isTest() && !test.active) { toast(test.done ? 'Тест завершён. Чтобы пройти его снова, нажмите «Пройти ещё раз».' : 'Чтобы начать, нажмите «Начать тест» справа.', 'info'); return; }
+  if (isTest() && !test.active) { toast(test.done ? 'Тест завершён. Чтобы пройти его снова, нажмите «Пройти ещё раз».' : 'Чтобы начать, выберите задание справа.', 'info'); return; }
   drag = { id, card, sx: e.clientX, sy: e.clientY, active: false, slot: null, verdict: null, goal: new V3(), shown: false };
 }
 cardsEl.addEventListener('pointerdown', onCardDown);
@@ -2544,7 +2615,7 @@ function endDrag(e) {
 }
 function cancelDrag() { const id = drag.id; finishDragUI(); dropBack(id); drag.active = false; refreshHints(); }
 function onCardClick(e) {
-  const card = e.target.closest('.card'); if (!card || suppressClick) return;
+  const card = e.target.closest('.card'); if (!card || suppressClick || inFault()) return;
   select({ type: 'comp', id: card.dataset.id });
 }
 cardsEl.addEventListener('click', onCardClick);
@@ -2611,6 +2682,7 @@ infoEl.addEventListener('click', e => {
   else if (b.dataset.act === 'install') autoInstall(selected.id);
   else if (b.dataset.act === 'remove') uninstall(selected.id);
   else if (b.dataset.act === 'start-test') startTest();
+  else if (b.dataset.act === 'start-fault') startFault();
   else if (b.dataset.act === 'abort-test') { test.active = false; test.done = false; resetBuild(); toast('Тест прерван.', 'info', 3000); }
 });
 infoEl.addEventListener('input', e => { if (e.target.id === 'studentName') test.name = e.target.value.trim(); });
@@ -2622,24 +2694,29 @@ function setLed(n, on) {
   L.haloM.opacity = on ? .55 : 0;
 }
 const allLeds = on => Object.keys(LED).forEach(n => setLed(n, on));
+// В задании «Найди неисправность» сайт сообщает только то, что видно и слышно, — без подсказки, в чём причина.
+const say = (full, symptom, ms = 9000) => toast(inFault() ? symptom : full, 'bad', ms);
+const NOTHING = 'Кнопка нажата — ничего не происходит.';
+const LED_SAY = { cpu: 'Горит индикатор CPU на плате.', dram: 'Горит индикатор DRAM на плате.', vga: 'Горит индикатор VGA на плате.', boot: 'Горит индикатор BOOT на плате.' };
 async function pressPower() {
   if (mode === 'desk') { deskPower(); return; }
   if (busyPower) return;
-  if (powered) { powered = false; spinTarget = 0; toast('Компьютер выключен.', 'info', 3000); updateUI(); return; }
-  if (isTest() && !test.active) { toast('Чтобы начать, нажмите «Начать тест» справа.', 'info'); return; }
+  if (powered) { powered = false; spinTarget = 0; biosHide(); toast('Компьютер выключен.', 'info', 3000); updateUI(); return; }
+  if (isTest() && !test.active) { toast('Чтобы начать, выберите задание справа.', 'info'); return; }
   const complete = installedCount() === ORDER.length;
-  if (inTest() && !complete) mistake(`Включение незавершённой сборки (${installedCount()} из ${ORDER.length})`);
-  if (!I.psu.installed) { toast('Кнопка нажата, но ничего не происходит: в корпусе нет блока питания.', 'bad'); return; }
-  if (!I.board.installed) { toast('Блок питания есть, но сигнал включения подать некому: материнская плата не установлена.', 'bad'); return; }
-  if (!I.fpanel.installed) { toast('Кнопка на корпусе нажата, но ничего не происходит: она подключается к плате кабелем F_PANEL. Без него плата не узнает, что кнопку нажали.', 'bad'); return; }
-  if (!I.atx24.installed) { toast('Тишина: плата не получает питание. Подключите кабель ATX 24-pin от блока питания.', 'bad'); return; }
+  if (inFault()) { test.powerOns++; renderInfo(); }
+  else if (inTest() && !complete) mistake(`Включение незавершённой сборки (${installedCount()} из ${ORDER.length})`);
+  biosHide();
+  if (!I.psu.installed) { say('Кнопка нажата, но ничего не происходит: в корпусе нет блока питания.', NOTHING); return; }
+  if (!I.board.installed) { say('Блок питания есть, но сигнал включения подать некому: материнская плата не установлена.', NOTHING); return; }
+  if (!I.fpanel.installed) { say('Кнопка на корпусе нажата, но ничего не происходит: она подключается к плате кабелем F_PANEL. Без него плата не узнает, что кнопку нажали.', NOTHING); return; }
+  if (!I.atx24.installed) { say('Тишина: плата не получает питание. Подключите кабель ATX 24-pin от блока питания.', NOTHING); return; }
   busyPower = true; ledFault = null; allLeds(false); spinTarget = 1; updateUI();
   toast('Плата проверяет компоненты. Следите за индикаторами Q-LED в правом верхнем углу платы.', 'info');
   const steps = [
     ['cpu', () => I.cpu.installed, 'Плата не нашла процессор — горит индикатор CPU. Без процессора компьютер не запустится.'],
     ['cpu', () => I.eps.installed, 'Процессор не получает питание — горит индикатор CPU. Подключите кабель CPU 8-pin в верхнем левом углу платы.'],
     ['cpu', () => I.cooler.installed, 'Запуск остановлен: плата не видит кулер процессора. Без охлаждения процессор за секунды нагреется до 100 °C и аварийно отключится.'],
-    ['cpu', () => I.cpuFan.installed, 'Запуск остановлен: CPU Fan Error — плата не получает сигнал от вентилятора кулера. Подключите его кабель к разъёму CPU_FAN над сокетом.'],
     ['dram', () => I.ram.installed || I.ram2.installed, 'Нет оперативной памяти — горит индикатор DRAM. Процессору некуда загрузить данные.'],
     ['vga', () => I.gpu.installed, 'Нет видеокарты — горит индикатор VGA. У этого процессора нет встроенной графики, поэтому монитор останется чёрным.'],
     ['vga', () => I.gpuPwr.installed, 'Видеокарта не получает дополнительное питание — горит индикатор VGA. Подключите кабель PCIe 8-pin к её верхнему торцу.'],
@@ -2648,13 +2725,24 @@ async function pressPower() {
   for (const [n, check, msg] of steps) {
     setLed(n, true); await sleep(420);
     if (!check()) {
-      ledFault = n; toast(msg, 'bad', 9000);
+      ledFault = n; say(msg, LED_SAY[n]);
       await sleep(2200); spinTarget = 0; busyPower = false; updateUI(); return;
     }
     setLed(n, false);
   }
   powered = true; busyPower = false;
-  if (inTest() && complete) { updateUI(); finishTest(); return; }
+  if (inTest() && !inFault() && complete) { updateUI(); finishTest(); return; }
+  biosShow();
+  if (!I.cpuFan.installed) {
+    say('Загрузка остановилась на экране BIOS: CPU Fan Error — плата не получает сигнал от вентилятора кулера. Подключите его кабель к разъёму CPU_FAN над сокетом.', 'Загрузка остановилась. Посмотрите, что написано на экране.');
+    updateUI(); return;
+  }
+  if (!I.paste.installed) { overheat(); updateUI(); return; }
+  if (inFault()) {
+    if (buildProblems().length) toast('Компьютер запустился, но не всё в порядке. Посмотрите на экран BIOS и на сам корпус.', 'info', 8000);
+    else finishTest();
+    updateUI(); return;
+  }
   const notes = [];
   if (!(I.ram.installed && I.ram2.installed)) notes.push('Память работает в одноканальном режиме: добавьте второй модуль.');
   else if (!(I.ram.slot.label[0] !== I.ram2.slot.label[0])) notes.push('Оба модуля памяти в одном канале — переставьте их в A2 и B2.');
@@ -2663,12 +2751,62 @@ async function pressPower() {
   if (!I.sysFan.installed) notes.push('Вентиляторы корпуса стоят: подключите их к SYS_FAN2, иначе горячий воздух останется внутри.');
   const front = [!I.usb3.installed && 'USB 3.0', !I.usbc.installed && 'USB-C', !I.hdAudio.installed && 'гнёзда для наушников'].filter(Boolean);
   if (front.length) notes.push(`Передние разъёмы без кабеля к плате работать не будут: ${front.join(', ')}.`);
-  toast(notes.length ? `Компьютер запустился. ${notes.join(' ')}` : 'Сборка прошла самотестирование POST: все компоненты найдены. Следующий шаг — вкладка «Рабочее место»: подключим монитор, клавиатуру и мышь.', notes.length ? 'info' : 'ok', 11000);
+  toast(notes.length ? `Компьютер запустился. ${notes.join(' ')}` : 'Сборка прошла самотестирование POST: все компоненты найдены — на экране BIOS видно, как плата их определила. Следующий шаг — вкладка «Рабочее место»: подключим монитор, клавиатуру и мышь.', notes.length ? 'info' : 'ok', 11000);
   updateUI();
+}
+// что ещё не так в сборке: не установленные детали и кабели, память в одном канале, видеокарта не в основном слоте
+function buildProblems() {
+  const p = ORDER.filter(id => !I[id].installed);
+  if (I.ram.installed && I.ram2.installed && I.ram.slot.label[0] === I.ram2.slot.label[0]) p.push('ramChannel');
+  if (I.gpu.installed && !I.gpu.slot.primary) p.push('gpuSlot');
+  return p;
+}
+// Без термопасты процессор греется за секунды: температура на экране BIOS растёт, на 100 °C срабатывает защита.
+function overheat() {
+  const run = biosRun; let t = 36;
+  const step = () => {
+    if (run !== biosRun || !powered) return;
+    t = Math.min(100, t + 3 + (100 - t) * .14); biosRender(t);
+    if (t < 100) { setTimeout(step, 280); return; }
+    powered = false; spinTarget = 0; biosScreen.innerHTML = '<div class="b-nosig">Нет сигнала</div>';
+    say('Компьютер выключился сам: процессор нагрелся до 100 °C, и сработала защита от перегрева. Под кулером нет термопасты — между металлом остался воздух.', 'Через несколько секунд компьютер выключился сам. Посмотрите, что показывал экран.');
+    updateUI();
+  };
+  setTimeout(step, 900);
+}
+
+/* ---------- экран BIOS ---------- */
+// После самотеста монитор показывает, как плата видит сборку: процессор, память, накопители, видеокарту, вентиляторы.
+const biosEl = $('#bios'), biosScreen = $('#biosScreen');
+let biosRun = 0; // номер показа: старые таймеры перегрева по нему понимают, что экран уже другой
+function biosShow() { biosRun++; biosEl.hidden = false; biosMin(false); biosRender(36); }
+function biosHide() { biosRun++; biosEl.hidden = true; }
+function biosMin(on) { biosEl.classList.toggle('min', on); biosEl.querySelector('[data-bios]').textContent = on ? 'Развернуть' : 'Свернуть'; }
+biosEl.querySelector('[data-bios]').addEventListener('click', () => biosMin(!biosEl.classList.contains('min')));
+function biosRender(temp) {
+  const now = new Date(), when = `${now.toLocaleDateString('ru-RU')} · ${now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+  const dimm = DIMM_X.map((_, i) => SLOT['dimm' + i]), mods = dimm.filter(s => s.occ);
+  const dual = mods.length === 2 && mods[0].label[0] !== mods[1].label[0];
+  const hdd = I.hdd.installed && I.hddPwr.installed && I.sataData.installed, gp = I.gpu.slot.primary;
+  const row = (k, v, cls = '') => `<div class="b-row ${cls}"><span>${k}</span><b>${v}</b></div>`;
+  const boot = [I.ssd.installed && 'Windows Boot Manager (M.2_1)', hdd && (I.ssd.installed ? 'EDU DRIVE 2 ТБ (SATA6G_1)' : 'Windows Boot Manager (SATA6G_1)')].filter(Boolean);
+  biosScreen.innerHTML = `
+    <div class="b-head"><b>UEFI BIOS · EZ Mode</b><span>${when}</span></div>
+    <div class="b-grid">
+      <section><h4>Информация</h4>${row('Плата', 'B760-EDU')}${row('BIOS', '1.02')}${row('Процессор', 'EDU CORE 8F')}${row('Частота', '3400 МГц')}</section>
+      <section><h4>Процессор</h4><div class="b-temp ${temp >= 85 ? 'bad' : temp >= 60 ? 'warn' : ''}">${Math.round(temp)} °C</div>${row('Напряжение', '1,10 В')}</section>
+      <section><h4>Память · ${mods.length * 16} ГБ DDR5</h4>${dimm.map(s => row('DIMM_' + s.label, s.occ ? '16 ГБ' : '—', s.occ ? '' : 'dim')).join('')}${row('Режим', dual ? 'двухканальный' : 'одноканальный', dual ? '' : 'warn')}</section>
+      <section><h4>Накопители</h4>${row('M.2_1', I.ssd.installed ? 'NVMe 1 ТБ' : 'нет', I.ssd.installed ? '' : 'dim')}${row('SATA6G_1', hdd ? 'HDD 2 ТБ' : 'нет', hdd ? '' : 'dim')}${row('SATA6G_2', 'нет', 'dim')}${row('SATA6G_3', 'нет', 'dim')}</section>
+      <section><h4>Видеокарта</h4>${row(gp ? 'PCIEX16_1' : 'PCIEX16_2', '8 ГБ GDDR6')}${row('Линии PCIe', gp ? 'x16' : 'x4', gp ? '' : 'warn')}</section>
+      <section><h4>Вентиляторы</h4>${row('CPU_FAN', I.cpuFan.installed ? '1180 об/мин' : 'N/A', I.cpuFan.installed ? '' : 'bad')}${row('SYS_FAN1', 'N/A', 'dim')}${row('SYS_FAN2', I.sysFan.installed ? '860 об/мин' : 'N/A', I.sysFan.installed ? '' : 'warn')}</section>
+      <section class="wide"><h4>Порядок загрузки</h4>${boot.map((b, i) => row(i + 1, b)).join('')}</section>
+    </div>
+    ${I.cpuFan.installed ? '' : '<div class="b-alert">CPU Fan Error! Press F1 to Run SETUP</div>'}
+    <div class="b-foot">Del — настройки · F8 — меню загрузки · F7 — расширенный режим</div>`;
 }
 $('#powerBtn').addEventListener('click', pressPower);
 function resetBuild() {
-  powered = false; busyPower = false; spinTarget = 0; ledFault = null; allLeds(false);
+  powered = false; busyPower = false; spinTarget = 0; ledFault = null; allLeds(false); biosHide();
   tweens.length = 0;
   for (const id of ORDER) { const it = I[id]; Object.assign(it, { installed: false, slot: null, busy: false, live: false }); it.group.visible = false; }
   SLOTS.forEach(s => s.occ = null);
@@ -2713,13 +2851,47 @@ document.querySelectorAll('.mode button').forEach(b => b.addEventListener('click
 function startTest() {
   const inp = $('#studentName'); if (inp) test.name = inp.value.trim();
   resetBuild();
-  Object.assign(test, { active: true, done: false, t0: performance.now(), tEnd: 0, errors: [], remarks: [] });
+  $('#subtitle').textContent = 'Тест · Сборка системного блока';
+  Object.assign(test, { active: true, done: false, kind: 'build', t0: performance.now(), tEnd: 0, errors: [], remarks: [] });
   resultEl.hidden = true;
   shuffleCards(true); select(null);
   toast('Тест начался, время пошло. Удачи!', 'info', 3500);
 }
+// Неисправности для задания «найди неисправность»: skip — чего нет в сборке, slots — что стоит не на своём месте,
+// sign — как это проявлялось (покажем в итогах). Из группы silent (ничего не происходит) — не больше одной.
+const FAULT_N = 3;
+const FAULTS = {
+  atx24:  { skip: 'atx24', group: 'silent', title: 'Не подключён кабель ATX 24-pin', sign: 'при нажатии кнопки ничего не происходило: плата без питания' },
+  fpanel: { skip: 'fpanel', group: 'silent', title: 'Не подключён кабель F_PANEL', sign: 'кнопка корпуса не была соединена с платой, и нажатие ничего не давало' },
+  eps:    { skip: 'eps', title: 'Не подключён кабель CPU 8-pin', sign: 'горел индикатор CPU: процессор без питания' },
+  gpuPwr: { skip: 'gpuPwr', title: 'Видеокарта без дополнительного питания', sign: 'горел индикатор VGA' },
+  cpuFan: { skip: 'cpuFan', title: 'Вентилятор кулера не подключён к CPU_FAN', sign: 'BIOS остановил загрузку с ошибкой CPU Fan Error' },
+  paste:  { skip: 'paste', title: 'Под кулером не было термопасты', sign: 'процессор нагревался до 100 °C, и компьютер выключался сам' },
+  sata:   { skip: 'sataData', title: 'Жёсткий диск не подключён кабелем SATA', sign: 'в BIOS не было диска на SATA6G_1' },
+  sysFan: { skip: 'sysFan', title: 'Вентиляторы корпуса не подключены', sign: 'вентиляторы корпуса не крутились, а в BIOS у SYS_FAN2 стояло N/A' },
+  ram:    { slots: { ram: 'dimm0', ram2: 'dimm1' }, title: 'Память в слотах A1 и A2 — в одном канале', sign: 'BIOS показывал одноканальный режим' },
+  gpuSlot:{ slots: { gpu: 'pcie16_2' }, title: 'Видеокарта во втором слоте PCIe x16', sign: 'BIOS показывал режим x4 вместо x16' },
+};
+function startFault() {
+  const inp = $('#studentName'); if (inp) test.name = inp.value.trim();
+  resetBuild();
+  const faults = [];
+  for (const f of Object.keys(FAULTS).sort(() => Math.random() - .5)) {
+    if (faults.length === FAULT_N) break;
+    if (FAULTS[f].group && faults.some(g => FAULTS[g].group === FAULTS[f].group)) continue;
+    faults.push(f);
+  }
+  const skip = faults.map(f => FAULTS[f].skip), slots = Object.assign({}, ...faults.map(f => FAULTS[f].slots));
+  for (const id of ORDER) if (!skip.includes(id)) placeNow(id, slots[id] ? SLOT[slots[id]] : defaultSlot(id));
+  $('#subtitle').textContent = 'Тест · Найди неисправность';
+  Object.assign(test, { active: true, done: false, kind: 'fault', faults, powerOns: 0, t0: performance.now(), tEnd: 0, errors: [], remarks: [] });
+  resultEl.hidden = true;
+  shuffleCards(true); select(null);
+  toast(`Компьютер собран, но работает неправильно: в нём ${FAULT_N} неисправности. Найдите и исправьте их. Время пошло!`, 'info', 6000);
+}
 function gradeFor(score) { return score <= 1 ? 5 : score <= 3 ? 4 : score <= 6 ? 3 : 2; }
 function finishTest() {
+  const fault = test.kind === 'fault';
   test.active = false; test.done = true; test.tEnd = performance.now();
   test.remarks = [];
   const pair = [I.ram.slot.label, I.ram2.slot.label].sort().join('+');
@@ -2727,20 +2899,23 @@ function finishTest() {
     ? 'Оба модуля памяти в одном канале — память работает в одноканальном режиме.'
     : `Модули памяти в слотах ${pair.replace('+', ' и ')}, а рекомендованы A2 и B2.`);
   if (!I.gpu.slot.primary) test.remarks.push('Видеокарта во втором слоте PCIe x16 — он работает в режиме x4.');
-  const score = test.errors.length + test.remarks.length, grade = gradeFor(score);
+  const extra = fault ? Math.max(0, test.powerOns - test.faults.length - 1) : 0; // лишние включения: каждое — как ошибка
+  if (extra) test.remarks.push(`Лишних включений: ${extra}. Без штрафа — ${test.faults.length + 1}: по одному на неисправность и одно проверочное.`);
+  const score = test.errors.length + test.remarks.length + Math.max(0, extra - 1), grade = gradeFor(score);
   const time = fmtTime(test.tEnd - test.t0);
   const list = (arr, cls = '') => `<ul class="errs">${arr.map(t => `<li class="${cls}">${esc(t)}</li>`).join('')}</ul>`;
   resultEl.innerHTML = `<div class="modal-card">
-    <h2 id="resultTitle">Тест пройден</h2>
+    <h2 id="resultTitle">${fault ? 'Неисправности устранены' : 'Тест пройден'}</h2>
     <p class="who">${test.name ? esc(test.name) : 'Имя не указано'} · ${new Date().toLocaleDateString('ru-RU')}</p>
     <div class="grade-row">
       <div class="grade g${grade}">${grade}</div>
       <div class="stats" style="flex:1;margin:0;grid-template-columns:repeat(2,minmax(0,1fr))">
         <div class="stat"><b>${time}</b><span>время</span></div>
-        <div class="stat ${score ? 'bad' : ''}"><b>${test.errors.length}${test.remarks.length ? ' + ' + test.remarks.length : ''}</b><span>${test.remarks.length ? 'ошибок + замечаний' : 'ошибок'}</span></div>
+        <div class="stat ${score ? 'bad' : ''}"><b>${test.errors.length}${score > test.errors.length ? ' + ' + (score - test.errors.length) : ''}</b><span>${score > test.errors.length ? 'ошибок + замечаний' : 'ошибок'}</span></div>
       </div>
     </div>
-    ${test.errors.length ? `<h3>Ошибки</h3>${list(test.errors)}` : '<h3>Ошибки</h3><p>Ни одной ошибки. Отличная сборка!</p>'}
+    ${fault ? `<h3>Что было неисправно</h3>${list(test.faults.map(f => `${FAULTS[f].title} — ${FAULTS[f].sign}.`), 'fixed')}` : ''}
+    ${test.errors.length ? `<h3>Ошибки</h3>${list(test.errors)}` : `<h3>Ошибки</h3><p>Ни одной ошибки. ${fault ? 'Отличная диагностика!' : 'Отличная сборка!'}</p>`}
     ${test.remarks.length ? `<h3>Замечания</h3>${list(test.remarks, 'remark')}` : ''}
     <div class="modal-actions">
       <button class="btn btn-power" type="button" data-act="copy">Скопировать результат</button>
@@ -2748,9 +2923,11 @@ function finishTest() {
       <button class="btn" type="button" data-act="learn">К обучению</button>
     </div>
   </div>`;
-  test.text = [`Мастерская ПК — тест «Сборка системного блока»`, `Студент: ${test.name || 'не указан'}`, `Дата: ${new Date().toLocaleDateString('ru-RU')}`,
+  test.text = [`Мастерская ПК — тест «${fault ? 'Найди неисправность' : 'Сборка системного блока'}»`, `Студент: ${test.name || 'не указан'}`, `Дата: ${new Date().toLocaleDateString('ru-RU')}`,
     `Оценка: ${grade}`, `Время: ${time}`, `Ошибок: ${test.errors.length}, замечаний: ${test.remarks.length}`,
+    ...(fault ? test.faults.map(f => `— неисправность: ${FAULTS[f].title}`) : []),
     ...test.errors.map(t => `— ошибка: ${t}`), ...test.remarks.map(t => `— замечание: ${t}`)].join('\n');
+
   resultEl.hidden = false;
   resultEl.querySelector('[data-act="copy"]').focus();
   renderInfo();

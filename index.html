@@ -36,8 +36,9 @@ button{font:inherit;color:inherit}
 .brand p{margin:3px 0 0;color:var(--muted);font-size:13px}
 .progress{display:flex;align-items:center;gap:12px;margin-left:auto}
 .segs{display:flex;gap:3px}
-.seg{width:12px;height:6px;border-radius:3px;background:var(--line);transition:background .3s}
-.seg.cable{width:9px}
+.seg{width:10px;height:6px;border-radius:3px;background:var(--line);transition:background .3s}
+.seg.cable{width:7px}
+
 .seg.done{background:var(--copper)}
 #progText{font:500 12.5px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
 .actions{display:flex;gap:8px}
@@ -239,7 +240,7 @@ body.test-mode .card .step,body.test-mode .tray .hint{display:none}
     <p class="hint">Перетащите деталь в корпус. Нажмите на карточку, чтобы прочитать о детали: нужное место начнёт мигать.</p>
     <div id="cards" class="cards"></div>
     <h2 class="eyebrow second">Кабели</h2>
-    <p class="hint">Перетащите штекер к разъёму. Кабели питания идут от блока питания.</p>
+    <p class="hint">Перетащите штекер к разъёму. Кабели питания идут от блока питания, кабели корпуса — из-за поддона.</p>
     <div id="cables" class="cards"></div>
    </div>
   </aside>
@@ -329,16 +330,27 @@ const I = {
     specs: [['Сокет','LGA1700'],['Ядра / потоки','8 / 16'],['Частота','3,4–5,0 ГГц'],['Тепловыделение','65 Вт'],['Встроенная графика','нет']],
     kinds: ['socket'], needs: ['board'], lift: 2.4,
   },
+  paste: {
+    cat: 'part', name: 'Термопаста', acc: 'термопасту', verb: 'нанесите', kind: 'Термоинтерфейс',
+    desc: 'Густая паста с мелкими частицами металла или керамики. Заполняет микроскопические неровности между крышкой процессора и основанием кулера. Без неё там остаётся воздух, а он проводит тепло в сотни раз хуже.',
+    where: 'Каплей в центр крышки процессора — после процессора и до кулера.',
+    tip: 'Нужна капля размером с горошину. Размазывать её не обязательно: кулер сам распределит пасту прижимом. Много пасты — тоже плохо: лишняя вытечет на сокет. Если кулер снимали, старую пасту стирают салфеткой со спиртом и наносят новую.',
+    whereShort: 'термопаста наносится на крышку процессора',
+    done: 'Капля термопасты в центре процессора. Кулер прижмёт её и распределит тонким слоем.',
+    specs: [['Теплопроводность','8,5 Вт/(м·К)'],['В шприце','2 г'],['Хватает на','5–8 сборок'],['Ток','не проводит']],
+    kinds: ['socket'], needs: ['cpu'], lift: 2.4,
+  },
   cooler: {
     cat: 'part', name: 'Кулер', acc: 'кулер', kind: 'Охлаждение процессора',
     desc: 'Отводит тепло от процессора. Медное основание забирает тепло, тепловые трубки переносят его в алюминиевые рёбра, а вентилятор продувает рёбра воздухом.',
     where: 'Поверх процессора, на крепление вокруг сокета. Поэтому кулер ставят только после процессора. Кабель вентилятора подключают к разъёму CPU_FAN.',
-    tip: 'Перед установкой на процессор наносят термопасту — каплю размером с горошину. Она заполняет микронеровности между металлом. Этот кулер дует сверху вниз: воздух проходит сквозь рёбра и заодно охлаждает радиаторы VRM и память вокруг сокета.',
+    tip: 'Перед установкой с медного основания снимают защитную плёнку, а винты крепления затягивают крест-накрест, по полоборота. Этот кулер дует сверху вниз: воздух проходит сквозь рёбра и заодно охлаждает радиаторы VRM и память вокруг сокета.',
     whereShort: 'кулер ставится поверх процессора, в центре платы',
-    needMsg: 'Сначала процессор. Кулер крепится поверх процессора и прижимает его через слой термопасты.',
+    needMsgs: { cpu: 'Сначала процессор. Кулер крепится поверх процессора и прижимает его через слой термопасты.',
+      paste: 'Сначала нанесите термопасту на процессор. Без неё между крышкой и основанием кулера останется воздух, а он плохо проводит тепло.' },
     done: 'Кулер на месте: термопаста нанесена, вентилятор смотрит вверх и дует сквозь рёбра на процессор.',
     specs: [['Тип','горизонтальный, обдув сверху'],['Тепловые трубки','4 × 6 мм'],['Вентилятор','120 мм, до 1800 об/мин'],['Отводит','до 130 Вт'],['Высота','8 см']],
-    kinds: ['socket'], needs: ['cpu'], lift: 2.6,
+    kinds: ['socket'], needs: ['cpu', 'paste'], lift: 2.6,
   },
   ram: {
     cat: 'part', name: 'Память, модуль 1', acc: 'модуль памяти', kind: 'ОЗУ · DDR5 · 16 ГБ',
@@ -438,14 +450,74 @@ const I = {
     specs: [['Контактов','7'],['Скорость','до 6 Гбит/с'],['Длина','50 см']],
     kinds: ['sataPort'], needs: ['hdd','board'], lift: 2.2,
   },
+  cpuFan: {
+    cat: 'cable', name: 'Кабель CPU_FAN', acc: 'кабель вентилятора кулера', kind: 'Вентилятор кулера',
+    desc: 'Тонкий кабель от вентилятора кулера. По четырём проводам идут +12 В, земля, сигнал оборотов и ШИМ — им плата управляет скоростью: чем горячее процессор, тем быстрее крутится вентилятор.',
+    where: 'В разъём CPU_FAN над сокетом, между радиатором VRM и памятью.',
+    tip: 'Только за разъёмом CPU_FAN плата следит при запуске: если вентилятор кулера подключить к другому, появится ошибка CPU Fan Error. Рёбра на штекере скользят по стенке разъёма — он входит только одной стороной.',
+    whereShort: 'этот кабель идёт в разъём CPU_FAN над сокетом',
+    done: 'Вентилятор кулера подключён к CPU_FAN. Плата будет следить за его оборотами.',
+    specs: [['Контактов','4 (ШИМ)'],['Напряжение','+12 В'],['Ток','до 1 А'],['Разъём на плате','CPU_FAN']],
+    kinds: ['cpuFan'], needs: ['cooler'], lift: 2.2,
+  },
+  fpanel: {
+    cat: 'cable', name: 'Кабель F_PANEL', acc: 'кабель F_PANEL', kind: 'Кнопка питания и индикаторы',
+    desc: 'Соединяет с платой кнопки и лампочки корпуса: кнопку питания, кнопку перезагрузки, индикатор питания и индикатор работы диска. У каждой пары проводов свой цвет.',
+    where: 'В разъём F_PANEL на нижнем краю платы, справа.',
+    tip: 'Без этого кабеля кнопка на корпусе не включит компьютер. Во многих корпусах это отдельные маленькие штекеры: PWR_SW, RESET, PLED+ и PLED−, HDD_LED. Схема, куда какой, напечатана на плате у разъёма и в инструкции. У индикаторов важна полярность: «+» к «+».',
+    whereShort: 'этот кабель идёт в разъём F_PANEL на нижнем краю платы, справа',
+    done: 'Кнопка питания и индикаторы корпуса подключены к плате.',
+    specs: [['Контактов','9 (2 × 5, один пропущен)'],['Сигналы','PWR_SW, RESET, PLED, HDD_LED'],['Разъём на плате','F_PANEL']],
+    kinds: ['fpanel'], needs: ['board'], lift: 2.2,
+  },
+  usb3: {
+    cat: 'cable', name: 'Кабель USB 3.0', acc: 'кабель USB 3.0', kind: 'Передние порты USB',
+    desc: 'Толстый кабель от передних портов USB 5 Гбит/с на корпусе. Внутри — 19 проводов: пары для USB 3.0 и для USB 2.0.',
+    where: 'В широкий разъём USB3_E34 в пластиковой рамке на нижнем краю платы.',
+    tip: 'Штекер входит одной стороной: на нём выступ, в рамке — паз. Кабель жёсткий, а контакты тонкие: вставляйте ровно, без перекоса, и вынимайте за штекер, а не за провод.',
+    whereShort: 'этот кабель идёт в широкий разъём USB3_E34 в рамке на нижнем краю платы',
+    done: 'Передние порты USB 3.0 подключены.',
+    specs: [['Контактов','19 (2 × 10)'],['Скорость','5 Гбит/с'],['Портов на корпусе','2'],['Разъём на плате','USB3_E34']],
+    kinds: ['usb3'], needs: ['board'], lift: 2.2,
+  },
+  usbc: {
+    cat: 'cable', name: 'Кабель USB-C', acc: 'кабель USB-C', kind: 'Передний порт USB-C',
+    desc: 'Тонкий плоский кабель от порта USB Type-C на корпусе. Порт работает на 10–20 Гбит/с, штекер в него вставляют любой стороной.',
+    where: 'В маленький разъём USB_C1 у правого края платы, под ATX 24-pin.',
+    tip: 'Разъём (Key-A, Type-E) маленький и хрупкий: штекер вставляют строго ровно. Если на плате такого разъёма нет, порт USB-C на корпусе работать не будет.',
+    whereShort: 'этот кабель идёт в маленький разъём USB_C1 у правого края платы, под ATX 24-pin',
+    done: 'Передний порт USB-C подключён.',
+    specs: [['Разъём','Key-A (Type-E)'],['Скорость','до 20 Гбит/с'],['Разъём на плате','USB_C1']],
+    kinds: ['usbc'], needs: ['board'], lift: 2.2,
+  },
+  hdAudio: {
+    cat: 'cable', name: 'Кабель HD Audio', acc: 'кабель HD Audio', kind: 'Передние аудиогнёзда',
+    desc: 'Кабель от гнёзд наушников и микрофона на корпусе. Звук для них делает звуковая микросхема на плате.',
+    where: 'В разъём HD_AUDIO в левом нижнем углу платы, рядом со звуковой микросхемой.',
+    tip: 'Разъём стоит рядом со звуковой микросхемой: чем короче путь звука по плате, тем меньше помех. Его легко перепутать с USB_E12 — колодки одинаковые, но пропущен в них разный контакт.',
+    whereShort: 'этот кабель идёт в разъём HD_AUDIO в левом нижнем углу платы',
+    done: 'Гнёзда наушников и микрофона на корпусе подключены.',
+    specs: [['Контактов','9 (2 × 5, один пропущен)'],['Стандарт','Intel HD Audio'],['Разъём на плате','HD_AUDIO']],
+    kinds: ['hdAudio'], needs: ['board'], lift: 2.2,
+  },
+  sysFan: {
+    cat: 'cable', name: 'Кабель SYS_FAN', acc: 'кабель вентиляторов корпуса', kind: 'Вентиляторы корпуса',
+    desc: 'Кабель идёт от передних вентиляторов. Все четыре вентилятора корпуса соединены разветвителем, поэтому к плате идёт один штекер. Плата раскручивает их сильнее, когда внутри становится жарко.',
+    where: 'В разъём SYS_FAN2 на нижнем краю платы, у правого угла.',
+    tip: 'Разъёмов для вентиляторов на плате несколько: CPU_FAN — для кулера, SYS_FAN (иногда CHA_FAN) — для вентиляторов корпуса. Провод прокладывают за поддоном, чтобы он не попал в лопасти.',
+    whereShort: 'этот кабель идёт в разъём SYS_FAN2 на нижнем краю платы, у правого угла',
+    done: 'Вентиляторы корпуса подключены: холодный воздух пойдёт спереди, горячий — назад.',
+    specs: [['Контактов','4 (ШИМ)'],['Вентиляторов','4, через разветвитель'],['Разъём на плате','SYS_FAN2']],
+    kinds: ['sysFan'], needs: ['board'], lift: 2.2,
+  },
 };
-const PART_ORDER = ['board','psu','cpu','cooler','ram','ram2','ssd','gpu','hdd'];
-const CABLE_ORDER = ['atx24','eps','gpuPwr','hddPwr','sataData'];
+const PART_ORDER = ['board','psu','cpu','paste','cooler','ram','ram2','ssd','gpu','hdd'];
+const CABLE_ORDER = ['atx24','eps','cpuFan','fpanel','usb3','usbc','hdAudio','sysFan','gpuPwr','hddPwr','sataData'];
 const ORDER = [...PART_ORDER, ...CABLE_ORDER];
 
 const PARTS = {
   // корпус
-  tray:      { kind:'Корпус', name:'Поддон и стойки', desc:'Стальной лист, к которому крепится материнская плата. Латунные стойки приподнимают плату, чтобы её контакты не касались металла. В вырезы с резиновыми заглушками прячут кабели.' },
+  tray:      { kind:'Корпус', name:'Поддон и стойки', desc:'Стальной лист, к которому крепится материнская плата. Латунные стойки приподнимают плату, чтобы её контакты не касались металла. В вырезы с резиновыми заглушками — люверсами — прячут кабели.', tip:'Кабели прокладывают за поддоном и выводят через люверсы рядом с разъёмами. Так они не мешают воздуху и не попадают в лопасти вентиляторов.' },
   shroud:    { kind:'Корпус', name:'Кожух блока питания', desc:'Перегородка, которая отделяет нижний отсек с блоком питания и дисками. Прячет кабели и разделяет потоки воздуха.', tip:'Стенки корпуса, которые закрывают обзор, становятся полупрозрачными.' },
   fans:      { kind:'Охлаждение корпуса', name:'Вентиляторы корпуса', desc:'Два передних вентилятора затягивают холодный воздух, задний выдувает горячий. Воздух проходит через корпус спереди назад.' },
   cage:      { kind:'Корпус', name:'Корзина для дисков', desc:'Место для 3,5-дюймовых жёстких дисков в нижнем отсеке. Диск ставят на салазки или прикручивают винтами.' },
@@ -476,10 +548,11 @@ const PARTS = {
   eps:     { kind:'Питание процессора', name:'Разъём CPU 8-pin', desc:'Отдельный разъём питания процессора в верхнем углу платы. Без этого кабеля компьютер не запустится.' },
   sata:    { kind:'Накопители', name:'Порты SATA', desc:'Разъёмы для жёстких дисков, SATA-SSD и приводов. Они медленнее M.2, но подходят для больших архивов.' },
   battery: { kind:'Память настроек', name:'Батарейка CMOS', desc:'Батарейка CR2032 питает часы и хранит настройки BIOS, пока компьютер отключён от розетки.', tip:'Если после отключения от сети на компьютере сбивается время, батарейку пора менять.' },
-  qled:    { kind:'Диагностика', name:'Индикаторы Q-LED', desc:'Четыре светодиода: CPU, DRAM, VGA и BOOT. При включении плата по очереди проверяет компоненты. Если проверка остановилась, горит индикатор того, что не прошло.', tip:'Нажмите «Включить» до конца сборки — увидите, какой индикатор загорится.' },
+  qled:    { kind:'Диагностика', name:'Индикаторы Q-LED', desc:'Четыре светодиода: CPU, DRAM, VGA и BOOT. При включении плата по очереди проверяет компоненты. Если проверка остановилась, горит индикатор того, что не прошло.', tip:'Подключите кабели ATX 24-pin и F_PANEL и нажмите «Включить» до конца сборки — увидите, какой индикатор загорится.' },
+  headers: { kind:'Разъёмы платы', name:'Колодки для корпуса и вентиляторов', desc:'Ряды штырьков, к которым подключают сам корпус. На нижнем краю: HD_AUDIO — гнёзда наушников, USB_E12 и USB3_E34 — передние USB, SYS_FAN — вентиляторы корпуса, F_PANEL — кнопка питания и индикаторы, JRGB1 — подсветка. Над сокетом — CPU_FAN для кулера, у правого края — USB_C1 для переднего USB-C.', tip:'Подпись есть у каждого разъёма прямо на плате. В реальной сборке эти кабели подключают до видеокарты: потом к нижнему краю платы трудно подобраться.' },
 };
 const CASE_PARTS = ['tray','shroud','fans','cage','ioShield','slotCovers'];
-const BOARD_PARTS = ['socket','dimm','m2','pcie16_1','pcie1','pcie16_2','vrm','chipset','io','atx24','eps','sata','battery','qled'];
+const BOARD_PARTS = ['socket','dimm','m2','pcie16_1','pcie1','pcie16_2','vrm','chipset','io','atx24','eps','sata','headers','battery','qled'];
 const CASE_INFO = {
   kind:'Корпус ATX Mid-Tower', name:'Корпус',
   desc:'Корпус держит все компоненты, защищает их от пыли и задаёт путь воздуха: холодный заходит спереди, горячий выходит сзади. Сейчас корпус лежит на боку, боковая панель снята — так собирают компьютер.',
@@ -770,6 +843,32 @@ wall([[38.6, 21, .2, CX, 9.5, 16.5]], [0, 0, 16.5], [0, 0, 1]);
 const shroudPart = part('shroud', caseG, false); // справка по кожуху — через список деталей
 const sidePanelBox = box(38.8, .1, 45.9, MAT.dark, CX, -3.3, CZ, caseG);
 const caseCode = { trayPlate: null, frontFans: [], rearFan: null, cage: [], ioShield: null }; // то, что заменяет модель из файла
+// Резиновые люверсы в поддоне: через них кабели уходят за поддон и выходят у разъёмов. [x, z, размер по x, размер по z, высота поддона]
+const GROMMETS = [
+  [14.6, -3.2, 1.5, 6.0], [14.6, 2.3, 1.5, 3.4], [14.6, 7.4, 1.5, 2.6, -1.22], // справа от платы: ATX 24-pin; USB-C и PCIe; SATA
+  [-5.5, -16.0, 4.4, 1.6], [6.5, -16.0, 4.4, 1.6],                        // над платой: CPU 8-pin; запасной
+  [21.4, 3.45, 2.4, 5.4],                                                 // у передней стенки: вентиляторы
+  [-9.2, 15.75, 1.8, .8], [-1.2, 15.75, 3.4, .8], [7.7, 15.75, 4.2, .8],  // под нижним краем платы: HD Audio; USB 3.0; F_PANEL и SYS_FAN
+];
+const rubber = mat({ color: 0x16191b, roughness: .92 });
+const slitTex = canvasTex(256, 64, (c, w, h) => { // мембрана: разрез вдоль и складки от него
+  c.fillStyle = '#0c0e10'; c.fillRect(0, 0, w, h);
+  c.strokeStyle = 'rgba(255,255,255,.05)'; c.lineWidth = 2;
+  for (let x = 10; x < w; x += 14) { c.beginPath(); c.moveTo(x, h / 2 - 4); c.lineTo(x - 3, 4); c.moveTo(x, h / 2 + 4); c.lineTo(x - 3, h - 4); c.stroke(); }
+  c.fillStyle = '#020303'; c.fillRect(6, h / 2 - 2, w - 12, 4);
+});
+function grommet(x, z, w, d, parent, y0 = -1) {
+  const r = Math.min(w, d) * .45, b = .16;
+  const sh = rrectShape(w, d, r), hole = rrectShape(w - b * 2, d - b * 2, Math.max(.04, r - b));
+  sh.holes.push(new THREE.Path(hole.getPoints(10)));
+  const ring = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: .1, bevelEnabled: true, bevelSize: .03, bevelThickness: .03, bevelSegments: 2, curveSegments: 10 }), rubber);
+  ring.rotation.x = -Math.PI / 2; ring.position.set(x, y0 + .02, z); ring.castShadow = ring.receiveShadow = true; parent.add(ring);
+  const long = Math.max(w, d), short = Math.min(w, d);
+  const skin = new THREE.Mesh(new THREE.PlaneGeometry(long - b * 1.6, short - b * 1.6), mat({ map: slitTex, roughness: .9 }));
+  skin.rotation.x = -Math.PI / 2; if (d > w) skin.rotation.z = Math.PI / 2;
+  skin.position.set(x, y0 + .05, z); skin.receiveShadow = true; parent.add(skin);
+}
+
 
 { // поддон, стойки
   const g = part('tray', caseG, false);
@@ -778,8 +877,6 @@ const caseCode = { trayPlate: null, frontFans: [], rearFan: null, cage: [], ioSh
     c.fillStyle = '#1e2429'; c.fillRect(0, 0, W, H);
     c.fillStyle = 'rgba(255,255,255,.025)';
     for (let i = 0; i < 400; i++) c.fillRect(Math.random() * W, Math.random() * H, 2, 2);
-    const grom = (x1, z1, x2, z2) => { roundRect(c, X(x1), Z(z1), X(x2) - X(x1), Z(z2) - Z(z1), 10); c.fillStyle = '#0a0d0f'; c.fill(); c.strokeStyle = '#2c3237'; c.lineWidth = 6; c.stroke(); };
-    grom(13.2, -12, 14.8, -4); grom(13.2, -1, 14.8, 7); grom(-6, -17.4, 4, -16.2);
     roundRect(c, X(-6), Z(-11), X(3) - X(-6), Z(-3) - Z(-11), 8); c.fillStyle = '#0d1012'; c.fill();
     c.fillStyle = 'rgba(200,210,220,.35)'; c.font = `600 13px ${MONO}`;
     c.fillText('ATX', X(-11.9), Z(-15.6)); c.fillText('mATX', X(-11.9), Z(-15.6) + 16);
@@ -789,6 +886,7 @@ const caseCode = { trayPlate: null, frontFans: [], rearFan: null, cage: [], ioSh
   tray.position.set(CX, -1.05, CZ); tray.receiveShadow = true; g.add(tray);
   caseCode.trayPlate = tray;
   for (const [hx, hz] of HOLES) cyl(.3, .84, MAT.brass, hx, -.58, hz, g, 6);
+  for (const [x, z, w, d, y0] of GROMMETS) grommet(x, z, w, d, g, y0);
 }
 const fansPart = part('fans', caseG);
 { // вентиляторы корпуса
@@ -825,6 +923,7 @@ const BOARD_BUSY = [
   [9.8, 5.8, 12.3, 10.2], [-.8, 6.7, 1.8, 9.9], [9.8, -11.6, 12.3, -8.3], [1.5, -13.0, 3.1, -11.5], // SATA, батарейка, Q-LED, CPU_FAN
   [-7.2, 12.2, 5.8, 13.6], [-10.9, 13.6, 10.2, 15.2],                                         // название платы, разъёмы внизу
   [-8.3, -2.9, -7.2, -1.8], [-11.1, 12.3, -9.9, 13.4], [8.6, 12.0, 9.6, 12.9], [8.6, 2.0, 9.9, 3.3], // микросхемы
+  [10.2, .7, 12.3, 2.7],                                                                      // разъём USB-C
 ];
 const boardFree = (x, z, m = 0) => Math.abs(x) < 12.2 - m && Math.abs(z) < 15.25 - m &&
   !BOARD_BUSY.some(([x1, z1, x2, z2]) => x > x1 - m && x < x2 + m && z > z1 - m && z < z2 + m) &&
@@ -930,6 +1029,7 @@ function drawBoard(c, W, H) {
   t('ATX_24P', 10.2, -3, 16, 'center', -Math.PI / 2);
   t('CPU_PWR', -9.4, -13.2, 15);
   t('CPU_FAN', 2.3, -12.0, 13, 'center');
+  t('USB_C1', 10.6, 1.7, 11, 'center', -Math.PI / 2);
   t('BAT1', 0.5, 9.45, 14, 'center');
   t('SATA6G', 10.25, 8, 15, 'center', -Math.PI / 2);
   ['CPU','DRAM','VGA','BOOT'].forEach((s, i) => t(s, 10.7, -11 + i * .75, 13));
@@ -1122,20 +1222,27 @@ function buildBoard() {
     chip(9.25, 2.65, 1.1, 1.1, 'SUPER', 'I/O');
     for (const [x, z] of [[-11.6, 12.0], [-11.0, 12.0], [-9.4, 12.6], [-9.4, 13.2]]) { cyl(.22, .5, BM.audioCap, x, .25, z, board, 14); cyl(.22, .02, MAT.alu, x, .51, z, board, 14); }
   }
-  { // штыревые разъёмы на нижнем краю
-    const pins = [], zp = 14.6;
+  { // колодки для корпуса: штыревые разъёмы на нижнем краю, CPU_FAN над сокетом, USB-C у правого края
+    const g = part('headers', board), pins = [], zp = 14.6;
     for (const h of BOARD_HEADERS) {
       const w = h.n * .254, d = h.rows * .254;
-      if (h.box) rbox(w + .5, .9, d + .5, .05, MAT.black, h.x, .45, zp, board);
-      else box(w + .04, .25, d + .04, MAT.black, h.x, .125, zp, board);
-      if (h.guard) { box(w + .3, .55, .08, MAT.plastic, h.x, .275, zp + .2, board); box(.08, .55, .4, MAT.plastic, h.x - w / 2 - .11, .275, zp, board); box(.08, .55, .4, MAT.plastic, h.x + w / 2 + .11, .275, zp, board); }
+      if (h.box) rbox(w + .5, .9, d + .5, .05, MAT.black, h.x, .45, zp, g);
+      else box(w + .04, .25, d + .04, MAT.black, h.x, .125, zp, g);
+      if (h.guard) { box(w + .3, .55, .08, MAT.plastic, h.x, .275, zp + .2, g); box(.08, .55, .4, MAT.plastic, h.x - w / 2 - .11, .275, zp, g); box(.08, .55, .4, MAT.plastic, h.x + w / 2 + .11, .275, zp, g); }
       for (let rI = 0; rI < h.rows; rI++) for (let i = 0; i < h.n; i++) {
         if (h.skip !== undefined && rI * h.n + i === h.skip) continue;
         pins.push([h.x + (i - (h.n - 1) / 2) * .254, h.box ? .55 : .5, zp + (rI - (h.rows - 1) / 2) * .254]);
       }
     }
-    const pinGeo = new THREE.BoxGeometry(.064, .6, .064);
-    many(pinGeo, MAT.gold, pins, board);
+    many(new THREE.BoxGeometry(.064, .6, .064), MAT.gold, pins, g);
+    // CPU_FAN: четыре штырька и стенка, по которой скользят рёбра штекера
+    box(1.05, .2, .45, MAT.black, 2.3, .1, -12.6, g);
+    box(1.05, .6, .07, MAT.black, 2.3, .3, -12.92, g);
+    for (let i = 0; i < 4; i++) box(.06, .55, .06, MAT.gold, 1.955 + i * .23, .475, -12.6, g);
+    // USB_C1 (Key-A, Type-E): пластиковое основание и металлический кожух с прорезью
+    box(.7, .45, 1.3, MAT.black, 11.55, .225, 1.7, g);
+    box(.5, .3, 1.05, MAT.steel, 11.55, .6, 1.7, g);
+    box(.3, .02, .85, mat({ color: 0x050607, roughness: .8 }), 11.55, .755, 1.7, g);
   }
   { // разъёмы питания, SATA, батарейка
     const atxTop = canvasTex(64, 256, (c, w, h) => { c.fillStyle = '#16191c'; c.fillRect(0, 0, w, h); c.fillStyle = '#050607'; for (let i = 0; i < 12; i++) for (let j = 0; j < 2; j++) c.fillRect(8 + j * 28, 6 + i * 20.8, 20, 15); });
@@ -1150,8 +1257,6 @@ function buildBoard() {
     cyl(1.05, .14, MAT.black, .5, .07, 8, g4, 32);
     cyl(.98, .32, MAT.steel, .5, .2, 8, g4, 32);
     box(.5, .06, 2.3, MAT.steel, .5, .38, 8, g4);
-    box(1.0, .6, .25, MAT.black, 2.3, .3, -12.6, board);
-    for (let i = 0; i < 4; i++) box(.06, .5, .06, MAT.gold, 1.95 + i * .23, .5, -12.6, board);
   }
   { // Q-LED
     const g = part('qled', board);
@@ -1415,6 +1520,34 @@ function buildCooler() {
   for (const k in P) g.add(P[k]);
   return g;
 }
+// Термопаста: шприц, носик которого — в начале координат над центром процессора. После нанесения шприц прячется,
+// остаётся капля размером с горошину (userData.syringe и userData.drop).
+function buildPaste() {
+  const g = new THREE.Group(), s = G();
+  const clear = mat({ color: 0xe8eef2, roughness: .15, transparent: true, opacity: .45, depthWrite: false });
+  const grey = mat({ color: 0xb8c0c6, roughness: .45, metalness: .3 });
+  const label = mat({ roughness: .5, map: canvasTex(256, 128, (c, w, h) => {
+    c.fillStyle = '#e4e9ec'; c.fillRect(0, 0, w, h); c.fillStyle = '#b5652c'; c.fillRect(0, 0, w, 26); c.fillRect(0, h - 26, w, 26);
+    c.save(); c.translate(w / 2, h / 2); c.fillStyle = '#1a1e22'; c.font = `700 30px ${MONO}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('THERMAL', 0, -14); c.font = `600 22px ${MONO}`; c.fillText('PASTE · 2 g', 0, 18); c.restore();
+  }) });
+  const add = (geo, m, y) => { const o = new THREE.Mesh(geo, m); o.position.y = y; o.castShadow = true; s.add(o); return o; };
+  add(new THREE.CylinderGeometry(.18, .05, .7, 16), clear, .45);              // носик
+  add(new THREE.CylinderGeometry(.04, .04, .7, 8), grey, .45);                // паста в носике
+  add(new THREE.CylinderGeometry(.32, .32, 4, 24, 1, true), clear, 2.8);      // прозрачный корпус
+  add(new THREE.CylinderGeometry(.27, .27, 3.2, 20), grey, 2.4);              // паста внутри
+  const lab = add(new THREE.CylinderGeometry(.325, .325, 1.6, 24, 1, true), label, 3.2); lab.rotation.y = Math.PI;
+  add(new THREE.BoxGeometry(1.1, .08, .55), clear, 4.8);                      // упор для пальцев
+  add(new THREE.CylinderGeometry(.26, .26, .12, 20), MAT.black, 4.05);        // поршень
+  add(new THREE.CylinderGeometry(.07, .07, 1.3, 10), MAT.black, 5.0);         // шток
+  add(new THREE.CylinderGeometry(.38, .38, .07, 24), MAT.black, 5.68);        // торец штока
+  s.position.y = .15; s.rotation.z = .45; s.rotation.y = -.6; g.add(s);
+  const drop = new THREE.Mesh(new THREE.SphereGeometry(.36, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat({ color: 0x9ea6ac, roughness: .5, metalness: .25 }));
+  drop.scale.y = .55; drop.visible = false; drop.castShadow = true; g.add(drop);
+  g.userData.syringe = s; g.userData.drop = drop;
+  return g;
+}
+function pasteShown(applied) { const u = I.paste.group.userData; u.syringe.visible = !applied; u.drop.visible = applied; u.drop.scale.set(1, .55, 1); }
 // Оперативная память DDR5: плата в плоскости yz, длина 13,3 см по z, контакты снизу; x — толщина.
 // Ключ-вырез между контактами смещён от центра (z ≈ 0,3…0,7), поэтому модуль входит только одной стороной.
 let ramMats = null;
@@ -1760,49 +1893,208 @@ function buildHDD() {
 
 /* ---------- кабели ---------- */
 // Штекер: начало координат — грань с контактами; back — направление, куда выходит провод.
+// Силовые провода — плоские шлейфы, как у модульных блоков питания: ribbon = [ширина, толщина, жил], wdir — вдоль чего ширина у штекера,
+// colors — цвета жил, если они разные. Тонкие кабели корпуса и вентиляторов круглые: tube — радиус.
+// psuEnd — у силовых кабелей второй штекер вставлен в гнездо модульной панели блока питания (в точке src).
+// route — путь от src к штекеру. Провода уложены аккуратно: уходят за поддон (y ≈ −2…−3, сверху не видно) и выходят
+// через резиновые люверсы рядом с разъёмами. Четвёртый элемент точки — куда смотрит плоская сторона шлейфа ('x', 'y', 'z'),
+// srcN — то же у src. fixed — сколько первых точек остаются на месте, пока штекер тащат мышью: провод выходит из своего люверса.
+// lead — сколько провода идёт от штекера прямо, прежде чем повернуть.
+const WIRES_FP = [0x3aa55a, 0xe6e8ea, 0xc23a30, 0xe6e8ea, 0xe0b23c, 0xe6e8ea, 0x3a78c8, 0xe6e8ea]; // пары: PWR_SW, RESET, PLED, HDD_LED
 const CABLE = {
-  atx24:  { plug: [1.5, 1.4, 5.7], back: [0, 1, 0], r: .6,  m: MAT.sleeve, src: [1.6, 10, 20],  srcDir: [1, 0, 0], route: [[5, 10.5, 18.5], [14, 8, 13], [14.3, 6.5, 2], [13, 5.8, -3]] },
-  eps:    { plug: [2.5, 1.2, 1.2], back: [0, 1, 0], r: .38, m: MAT.sleeve, src: [1.6, 10, 23.5], srcDir: [1, 0, 0], route: [[6, 12, 19], [14.5, 11, 12], [15, 10, -10], [12, 9, -16.6], [-3, 8, -16.9]] },
-  gpuPwr: { plug: [2.1, 1.3, .95], back: [0, 1, 0], r: .38, m: MAT.sleeve, src: [1.6, 6, 20.5],  srcDir: [1, 0, 0], route: [[5, 8.5, 17.5], [13.5, 13, 12], [11.5, 15.6, 6.5]] },
-  hddPwr: { plug: [1.0, .7, 2.2],  back: [-1, 0, 0], r: .28, m: MAT.sleeve, src: [1.6, 6, 24],   srcDir: [1, 0, 0], route: [[4, 5, 25.5], [6, 1.6, 25.2]] },
-  sataData:{ plug: [1.0, .55, 1.0], back: [1, 0, 0], r: .18, m: MAT.sataRed, src: [8.45, .4, 21.6], srcDir: [-1, 0, 0], route: [[6.5, 2, 19.5], [10.5, 3, 15.8], [14.5, 2.5, 10.5]], plug2: [9.45, .4, 21.6] },
+  atx24:  { plug: [1.5, 1.4, 5.7], back: [0, 1, 0], ribbon: [5.0, .5, 12], wdir: [0, 0, 1], wSrc: 3.0, color: 0x15181b, psuEnd: [3.2, 1.1], src: [1.6, 10, 20], srcDir: [1, 0, 0], srcN: 'z', fixed: 8,
+    route: [[4.6, 9.4, 17.9], [4.6, 3.5, 16.75, 'z'], [5.0, -1.9, 16.6], [5.6, -2.0, 13.5, 'y'], [9.5, -2.0, -2.6, 'y'], [13.3, -2.0, -3, 'y'], [14.6, -1.2, -3], [14.6, 1.2, -3, 'x'], [13.7, 4.3, -3]] },
+  eps:    { plug: [2.5, 1.2, 1.2], back: [0, 1, 0], ribbon: [2.2, .45, 4], wdir: [1, 0, 0], color: 0x15181b, psuEnd: [1.7, 1.1], src: [1.6, 10, 23.5], srcDir: [1, 0, 0], srcN: 'z', fixed: 8,
+    route: [[5.6, 9.8, 19.4], [5.8, 4, 17.35, 'z'], [6.2, -2.6, 16.6], [5.0, -2.75, 12, 'y'], [-6.0, -2.75, -13.5, 'y'], [-7.0, -2.6, -16.0], [-7.0, -1.4, -16.0], [-7.0, .6, -16.0, 'z'], [-7.8, 3.0, -15.6]] },
+  gpuPwr: { plug: [2.1, 1.3, .95], back: [0, 1, 0], ribbon: [1.9, .45, 4], wdir: [1, 0, 0], color: 0x15181b, psuEnd: [1.7, 1.1], src: [1.6, 6, 20.5], srcDir: [1, 0, 0], srcN: 'z', lead: 1.3, fixed: 7,
+    route: [[6.4, 4.8, 19.8], [7.8, .5, 18.0, 'z'], [8.2, -2.3, 16.8], [9.5, -2.4, 12.5, 'y'], [13.2, -2.4, 3.6, 'y'], [14.6, -1.8, 2.85], [14.6, -.4, 2.85, 'x'], [14.6, 6, 3.2, 'x'], [14.0, 12.6, 5.4], [11.2, 15.6, 6.6], [10.0, 15.9, 5.6]] },
+  hddPwr: { plug: [1.0, .7, 2.2], back: [-1, 0, 0], ribbon: [1.6, .22, 5], wdir: [0, 0, 1], color: 0x15181b, psuEnd: [1.4, 1.1], src: [1.6, 6, 24], srcDir: [1, 0, 0], srcN: 'z',
+    route: [[5.2, 3.2, 24.7]] },
+  sataData: { plug: [1.0, .55, 1.0], back: [1, 0, 0], ribbon: [.8, .1, 7], wdir: [0, 0, 1], color: 0xc23a30, src: [8.45, .4, 21.6], srcDir: [-1, 0, 0], srcN: 'y', plug2: [9.45, .4, 21.6], lead: .5, fixed: 7,
+    route: [[6.2, -1.4, 21.0], [7.5, -3.0, 19.5, 'y'], [12.8, -3.0, 16.4, 'y'], [13.0, -3.0, 9.0, 'y'], [13.9, -2.9, 7.4], [14.6, -1.6, 7.4], [14.6, -.2, 7.2, 'x']] },
+  // вентилятор кулера: провод спускается в щель между кулером и памятью и уходит под рёбра к CPU_FAN
+  cpuFan: { plug: [1.05, .65, .45], back: [0, 1, 0], tube: .13, color: 0x17191c, src: [5.05, 6.3, -12.7], srcDir: [0, -1, 0], lead: .9, fixed: 1,
+    route: [[5.2, 2.6, -12.65]] },
+  // от переднего вентилятора по поддону к люверсу у передней стенки, за поддоном — к нижнему краю платы
+  sysFan: { plug: [1.05, .65, .45], back: [0, 1, 0], tube: .13, color: 0x17191c, src: [28.0, 2.2, 6.6], srcDir: [-1, 0, 0], lead: .8, fixed: 8,
+    route: [[25.0, -.75, 6.0], [22.7, -.8, 4.6], [21.4, -1.4, 3.9], [21.35, -2.6, 3.1], [16.0, -2.6, 9.5], [10.2, -2.6, 15.2], [9.0, -2.2, 15.75], [9.0, -.8, 15.75], [9.0, 1.4, 15.6]] },
+
+  fpanel: { plug: [1.35, .75, .6], back: [0, 1, 0], ribbon: [1.1, .1, 8], wdir: [1, 0, 0], colors: WIRES_FP, src: [6.4, -2.6, 12], srcDir: [0, 0, 1], srcN: 'y', lead: .8, fixed: 3,
+    route: [[6.4, -2.4, 15.2, 'y'], [6.4, -1.4, 15.75], [6.4, .3, 15.75, 'z'], [6.4, 1.5, 15.5]] },
+  usb3:   { plug: [2.6, 1.0, .7], back: [0, 1, 0], tube: .3, color: 0x2b4d86, src: [-1.2, -2.5, 12], srcDir: [0, 0, 1], lead: 1.0, fixed: 3,
+    route: [[-1.2, -2.5, 15.0], [-1.2, -1.6, 15.75], [-1.2, .4, 15.75], [-1.2, 2.0, 15.4]] },
+  usbc:   { plug: [.7, .6, 1.25], back: [0, 1, 0], ribbon: [.75, .14, 1], wdir: [0, 0, 1], color: 0x2a2e32, src: [15.6, -2.6, 2.0], srcDir: [-1, 0, 0], srcN: 'y', lead: .9, fixed: 3,
+    route: [[14.9, -2.6, 1.6, 'y'], [14.6, -1.8, 1.2], [14.6, -.4, 1.2, 'x'], [14.3, 1.6, 1.4]] },
+  hdAudio:{ plug: [1.35, .75, .6], back: [0, 1, 0], tube: .17, color: 0x17191c, src: [-9.2, -2.6, 12], srcDir: [0, 0, 1], lead: .8, fixed: 3,
+    route: [[-9.2, -2.5, 15.0], [-9.2, -1.5, 15.75], [-9.2, .3, 15.75], [-9.2, 1.5, 15.5]] },
 };
-function plugMesh(spec, m = MAT.black) {
-  const [w, h, d] = spec.plug, [bx, by] = spec.back;
-  const geo = new THREE.BoxGeometry(w, h, d);
-  geo.translate(bx * w / 2, by ? h / 2 : 0, 0);
-  const o = new THREE.Mesh(geo, m); o.castShadow = o.receiveShadow = true;
-  return o;
+const ribbonMats = {}, tubeMats = {};
+function ribbonMat(spec) {
+  const n = spec.ribbon[2], key = (spec.colors || [spec.color]).join() + '/' + n;
+  if (ribbonMats[key]) return ribbonMats[key];
+  const cols = (spec.colors || [spec.color]).map(c => new THREE.Color(c));
+  const t = canvasTex(n * 24, 8, (c, w, h) => { // жилы: тёмные бороздки между светлыми гребнями
+    for (let i = 0; i < n; i++) {
+      const c0 = cols[i % cols.length], g = c.createLinearGradient(i * 24, 0, i * 24 + 24, 0);
+      g.addColorStop(0, '#000'); g.addColorStop(.5, `#${c0.clone().offsetHSL(0, 0, .12).getHexString()}`); g.addColorStop(1, '#000');
+      c.fillStyle = `#${c0.getHexString()}`; c.fillRect(i * 24, 0, 24, h); c.globalAlpha = .55; c.fillStyle = g; c.fillRect(i * 24, 0, 24, h); c.globalAlpha = 1;
+    }
+  });
+  t.wrapT = THREE.RepeatWrapping;
+  return (ribbonMats[key] = { top: mat({ map: t, roughness: .55, side: THREE.DoubleSide }), side: mat({ color: cols[0], roughness: .55, side: THREE.DoubleSide }) });
+}
+const cableMat = spec => spec.tube ? (tubeMats[spec.color] ||= mat({ color: spec.color, roughness: .7 })) : (M => [M.top, M.side])(ribbonMat(spec));
+// плоский шлейф вдоль кривой. Ширину переносим от штекера к другому концу без скручивания, а в точках-подсказках keys
+// ({ p, n }: плоская сторона смотрит по n) доворачиваем вокруг оси провода — между подсказками поворот плавный.
+function ribbonGeometry(curve, segs, w, th, W0, wSrc = w, keys = []) { // wSrc — ширина у другого конца (плавно сужается)
+  const pts = curve.getSpacedPoints(segs), n = pts.length;
+  const T = pts.map((p, i) => pts[Math.min(n - 1, i + 1)].clone().sub(pts[Math.max(0, i - 1)]).normalize());
+  const Wv = new Array(n); let wv = W0.clone();
+  for (let i = n - 1; i >= 0; i--) {
+    wv.addScaledVector(T[i], -wv.dot(T[i]));
+    if (wv.lengthSq() < 1e-6) wv = Math.abs(T[i].y) < .9 ? new V3(0, 1, 0).cross(T[i]) : new V3(1, 0, 0).cross(T[i]);
+    wv.normalize(); Wv[i] = wv.clone();
+  }
+  const ks = [{ i: n - 1, a: 0 }];
+  for (const k of keys) {
+    let i = 0, best = Infinity;
+    pts.forEach((p, j) => { const d = p.distanceToSquared(k.p); if (d < best) { best = d; i = j; } });
+    const want = new V3().crossVectors(k.n, T[i]);
+    if (want.lengthSq() < .01) continue;
+    want.normalize();
+    ks.push({ i, a: Math.atan2(T[i].dot(new V3().crossVectors(Wv[i], want)), Wv[i].dot(want)) });
+  }
+  ks.sort((p, q) => q.i - p.i);
+  for (let j = 1; j < ks.length; j++) { // у шлейфа нет «лица»: поворот на 180° ничего не меняет — берём ближайший угол
+    while (ks[j].a - ks[j - 1].a > Math.PI / 2) ks[j].a -= Math.PI;
+    while (ks[j].a - ks[j - 1].a < -Math.PI / 2) ks[j].a += Math.PI;
+  }
+  ks.forEach((A, j) => {
+    const B = ks[j + 1];
+    if (!B) { for (let i = A.i; i >= 0; i--) Wv[i].applyAxisAngle(T[i], A.a); return; }
+    for (let i = A.i; i > B.i; i--) { const s = (A.i - i) / (A.i - B.i); Wv[i].applyAxisAngle(T[i], A.a + (B.a - A.a) * s * s * (3 - 2 * s)); }
+  });
+  const pos = [], uv = [], idx = [], len = curve.getLength();
+  // четыре грани: верх и низ (с жилами), два ребра
+  const faces = [[[-1, 1], [1, 1]], [[1, -1], [-1, -1]], [[1, 1], [1, -1]], [[-1, -1], [-1, 1]]];
+  faces.forEach(([a, b], f) => {
+    const base = pos.length / 3;
+    for (let i = 0; i < n; i++) {
+      const N = new V3().crossVectors(T[i], Wv[i]), wi = w + (wSrc - w) * Math.max(0, 1 - i / (n - 1) / .15);
+      for (const [sw, sn] of [a, b]) {
+        const p = pts[i].clone().addScaledVector(Wv[i], sw * wi / 2).addScaledVector(N, sn * th / 2);
+        pos.push(p.x, p.y, p.z); uv.push(f < 2 ? (sw + 1) / 2 : 0, i / (n - 1) * len / 2);
+      }
+      if (i) { const k = base + i * 2; idx.push(k - 2, k - 1, k, k - 1, k + 1, k); }
+    }
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx);
+  const half = idx.length / 2; geo.addGroup(0, half, 0); geo.addGroup(half, half, 1);
+  geo.computeVertexNormals();
+  return geo;
+}
+const cableGeometry = (spec, curve, segs, keys) => spec.tube ? new THREE.TubeGeometry(curve, segs, spec.tube, 8, false)
+  : ribbonGeometry(curve, segs, spec.ribbon[0], spec.ribbon[1], new V3(...spec.wdir), spec.wSrc, keys);
+// корпус штекера с ячейками контактов: rows × cols ячеек видны на грани, откуда выходят провода
+const plugTex = {};
+function plugTop(rows, cols) {
+  const key = rows + 'x' + cols;
+  return plugTex[key] || (plugTex[key] = mat({ roughness: .6, map: canvasTex(cols * 24, rows * 24, (c, w, h) => {
+    c.fillStyle = '#17191c'; c.fillRect(0, 0, w, h); c.fillStyle = '#0a0b0d';
+    for (let i = 0; i < rows; i++) for (let j = 0; j < cols; j++) { roundRect(c, j * 24 + 3, i * 24 + 3, 18, 18, 3); c.fill(); }
+  }) }));
+}
+const plugLabel = {};
+function plugText(s) {
+  return plugLabel[s] || (plugLabel[s] = mat({ transparent: true, roughness: .6, map: canvasTex(128, 48, (c, w, h) => {
+    c.fillStyle = '#e4e9ec'; c.font = `700 ${Math.min(30, 200 / s.length)}px ${MONO}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(s, w / 2, h / 2 + 2);
+  }) }));
+}
+function buildPlug(id, flip) {
+  const spec = CABLE[id], g = new THREE.Group(), [w, h, d] = spec.plug;
+  const housing = (x1, x2, y1, y2, z1, z2, top) => {
+    const o = new THREE.Mesh(new THREE.BoxGeometry(x2 - x1, y2 - y1, z2 - z1), top ? [MAT.black, MAT.black, top, MAT.black, MAT.black, MAT.black] : MAT.black);
+    o.position.set((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2); o.castShadow = o.receiveShadow = true; g.add(o); return o;
+  };
+  const label = (s, x, y, z, ry, size = .9) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(size, size * .375), plugText(s)); p.position.set(x, y, z); p.rotation.y = ry; g.add(p); };
+  if (id === 'atx24') {
+    housing(-w / 2, w / 2, 0, h, -d / 2, d / 2, plugTop(2, 12));
+    box(.12, .9, .55, MAT.black, w / 2 + .1, .75, 0, g); box(.22, .14, .55, MAT.black, w / 2 + .12, 1.25, 0, g); box(.16, .12, .55, MAT.black, w / 2 + .06, .2, 0, g); // защёлка
+    label('MB', -w / 2 - .005, .7, 1.6, -Math.PI / 2);
+  } else if (id === 'eps') { // 4 + 4: две половины с зазором
+    housing(-w / 2, -.05, 0, h, -d / 2, d / 2, plugTop(2, 2)); housing(.05, w / 2, 0, h, -d / 2, d / 2, plugTop(2, 2));
+    for (const x of [-.65, .65]) { box(.4, .8, .1, MAT.black, x, .65, d / 2 + .08, g); box(.4, .12, .2, MAT.black, x, 1.1, d / 2 + .12, g); }
+    label('CPU', 0, .6, -d / 2 - .005, Math.PI);
+  } else if (id === 'gpuPwr') { // 6 + 2
+    housing(-w / 2, .5, 0, h, -d / 2, d / 2, plugTop(2, 3)); housing(.56, w / 2, 0, h, -d / 2, d / 2, plugTop(2, 1));
+    box(.45, .85, .1, MAT.black, -.3, .7, d / 2 + .08, g); box(.45, .12, .2, MAT.black, -.3, 1.15, d / 2 + .12, g);
+    label('PCIe', -.3, .6, -d / 2 - .005, Math.PI);
+  } else if (id === 'hddPwr') { // плоский штекер SATA Power, провода выходят по −x
+    housing(-w, 0, -h / 2, h / 2, -d / 2, d / 2);
+    box(.06, .12, d * .8, MAT.black, -w - .03, .2, 0, g);
+    const lab = new THREE.Mesh(new THREE.PlaneGeometry(1.0, .38), plugText('SATA')); lab.rotation.x = -Math.PI / 2; lab.rotation.z = Math.PI / 2; lab.position.set(-w / 2, h / 2 + .005, 0); g.add(lab);
+  } else if (id === 'sataData') { // штекер SATA с металлической защёлкой сверху
+    const s = flip ? -1 : 1;
+    housing(Math.min(0, s * w), Math.max(0, s * w), -h / 2, h / 2, -d / 2, d / 2);
+    const clip = box(w * .7, .04, d * .5, MAT.steel, s * w * .55, h / 2 + .03, 0, g); clip.castShadow = false;
+    box(.12, .1, d * .5, MAT.steel, s * w * .9, h / 2 + .08, 0, g);
+  } else if (id === 'cpuFan' || id === 'sysFan') { // 4-pin: рёбра-направляющие сзади скользят по стенке разъёма
+    housing(-w / 2, w / 2, 0, h, -d / 2, d / 2, plugTop(1, 4));
+    for (const x of [-.18, .18]) box(.08, h * .8, .08, MAT.black, x, h * .45, -d / 2 - .04, g);
+  } else if (id === 'fpanel' || id === 'hdAudio') { // колодка 2 × 5, одно гнездо закрыто — ключ
+    housing(-w / 2, w / 2, 0, h, -d / 2, d / 2, plugTop(2, 5));
+    label(id === 'fpanel' ? 'F_PANEL' : 'AUDIO', 0, h * .5, d / 2 + .005, 0, 1.15);
+  } else if (id === 'usb3') { // 19-pin: штекер входит в рамку разъёма, выступ-ключ сбоку
+    housing(-w / 2, w / 2, 0, h, -d / 2, d / 2, plugTop(2, 10));
+    box(.8, h * .7, .1, MAT.black, 0, h * .4, -d / 2 - .05, g);
+    label('USB 3.0', 0, h * .55, d / 2 + .005, 0, 1.4);
+  } else if (id === 'usbc') { // Key-A (Type-E): маленький штекер с металлической защёлкой
+    housing(-w / 2, w / 2, .2, h, -d / 2, d / 2);
+    box(w * .7, .22, d * .85, MAT.steel, 0, .11, 0, g);
+    box(.04, h * .55, d * .5, MAT.steel, w / 2 + .02, h * .55, 0, g);
+  }
+  return g;
+}
+// штекер на стороне блока питания: в гнезде модульной панели, провода выходят по srcDir
+function psuPlug(spec) {
+  const [hh, ww] = spec.psuEnd, sd = new V3(...spec.srcDir), g = new THREE.Group();
+  box(.9, hh * .96, ww * .96, MAT.black, .45, 0, 0, g);
+  g.position.set(...spec.src); g.quaternion.setFromUnitVectors(new V3(1, 0, 0), sd);
+  return g;
 }
 function buildCable(id) {
   const spec = CABLE[id], g = new THREE.Group();
-  const plug = plugMesh(spec); g.add(plug);
-  if (by(spec)) box(.12, spec.plug[1] * .6, .5, MAT.latch, spec.plug[0] / 2 + .06, spec.plug[1] * .5, 0, plug);
+  const plug = buildPlug(id); g.add(plug);
   let plug2 = null;
-  if (spec.plug2) {
-    plug2 = plugMesh({ plug: spec.plug, back: [-1, 0, 0] }); plug2.position.set(...spec.plug2); g.add(plug2);
-  }
-  const tube = new THREE.Mesh(new THREE.BufferGeometry(), spec.m); tube.castShadow = true; g.add(tube);
+  if (spec.plug2) { plug2 = buildPlug(id, true); plug2.position.set(...spec.plug2); g.add(plug2); }
+  if (spec.psuEnd) g.add(psuPlug(spec));
+  const tube = new THREE.Mesh(new THREE.BufferGeometry(), cableMat(spec)); tube.castShadow = true; g.add(tube);
   return { g, plug, tube, spec };
 }
 function by(spec) { return spec.back[1] !== 0; }
-function cableCurve(spec, plugPos, routed) {
-  const src = new V3(...spec.src), sd = new V3(...spec.srcDir), bd = new V3(...spec.back);
+const AXIS = { x: new V3(1, 0, 0), y: new V3(0, 1, 0), z: new V3(0, 0, 1) };
+function cablePath(spec, plugPos, routed) {
+  const sd = new V3(...spec.srcDir), src = new V3(...spec.src).addScaledVector(sd, spec.psuEnd ? .9 : 0), bd = new V3(...spec.back);
   const len = by(spec) ? spec.plug[1] : spec.plug[0];
   const back = plugPos.clone().addScaledVector(bd, len);
-  const pts = [src, src.clone().addScaledVector(sd, 1.5)];
-  if (routed) spec.route.forEach(p => pts.push(new V3(...p)));
-  else { const mid = pts[1].clone().lerp(back, .5); mid.y = Math.max(mid.y, back.y) + 3; pts.push(mid); }
-  pts.push(back.clone().addScaledVector(bd, 1.8), back);
-  return new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+  const pts = [src, src.clone().addScaledVector(sd, 1.5)], keys = spec.srcN ? [{ p: src, n: AXIS[spec.srcN] }] : [];
+  for (const [x, y, z, n] of routed ? spec.route : spec.route.slice(0, spec.fixed || 0)) {
+    const p = new V3(x, y, z); pts.push(p);
+    if (n) keys.push({ p, n: AXIS[n] });
+  }
+  if (!routed) { const mid = pts[pts.length - 1].clone().lerp(back, .5); mid.y = Math.max(mid.y, back.y) + 3; pts.push(mid); }
+  pts.push(back.clone().addScaledVector(bd, spec.lead ?? 1.8), back);
+  return { curve: new THREE.CatmullRomCurve3(pts, false, 'centripetal'), keys };
 }
 function setTube(it, routed) {
-  const geo = new THREE.TubeGeometry(cableCurve(it.cable.spec, it.cable.plug.position, routed), routed ? 90 : 48, it.cable.spec.r, 8, false);
+  const s = it.cable.spec, { curve, keys } = cablePath(s, it.cable.plug.position, routed);
+  const geo = cableGeometry(s, curve, routed ? 160 : 70, keys);
   it.cable.tube.geometry.dispose(); it.cable.tube.geometry = geo;
 }
 
 /* ---------- сборка объектов ---------- */
-const builders = { board: buildBoard, psu: buildPSU, cpu: buildCPU, cooler: buildCooler, ram: buildRAM, ram2: buildRAM, ssd: buildSSD, gpu: buildGPU, hdd: buildHDD };
+const builders = { board: buildBoard, psu: buildPSU, cpu: buildCPU, paste: buildPaste, cooler: buildCooler, ram: buildRAM, ram2: buildRAM, ssd: buildSSD, gpu: buildGPU, hdd: buildHDD };
 for (const id of ORDER) {
   const it = I[id];
   if (it.cat === 'part') { it.group = builders[id](); it.mover = it.group; }
@@ -1834,11 +2126,17 @@ const SLOTS = [
   { id:'sataPort', kind:'sataPort', conn:true, name:'порты SATA на плате', x:11.4, z:8, py:.45, hx:.4, hz:1.5, tx:12.05, ty:.45, tz:6.5, g:[1.9, 1.4, 4.2, .5], active:onBoard },
   { id:'hddPwr', kind:'hddPwr', conn:true, name:'разъём питания на диске', x:9.45, z:25, py:.4, hx:.2, hz:.9, ty:.4, g:[1.4, 1.4, 2.8, .4], active:() => I.hdd.installed },
   { id:'hddData', kind:'hddData', conn:true, name:'разъём данных на диске', x:9.45, z:21.6, py:.4, hx:.2, hz:.4, ty:.4, g:[1.4, 1.4, 1.6, .4], active:() => I.hdd.installed },
+  { id:'cpuFanHdr', kind:'cpuFan', conn:true, name:'разъём CPU_FAN над сокетом', x:2.3, z:-12.6, py:.2, hx:.5, hz:.2, ty:.2, g:[1.5, 1.1, .8, .45], active:onBoard },
+  { id:'usbcHdr', kind:'usbc', conn:true, name:'разъём USB_C1 у правого края платы', x:11.55, z:1.7, py:.55, hx:.3, hz:.6, ty:.55, g:[1.1, 1.3, 1.7, .6], active:onBoard },
+  { id:'hdAudioHdr', kind:'hdAudio', conn:true, name:'разъём HD_AUDIO', x:-9.2, z:14.6, py:.25, hx:.65, hz:.2, ty:.25, g:[1.8, 1.1, .9, .5], active:onBoard },
+  { id:'usb3Hdr', kind:'usb3', conn:true, name:'разъём USB3_E34', x:-1.2, z:14.6, py:.55, hx:1.5, hz:.3, ty:.55, g:[3.4, 1.4, 1.4, .6], active:onBoard },
+  { id:'fpanelHdr', kind:'fpanel', conn:true, name:'разъём F_PANEL', x:6.4, z:14.6, py:.25, hx:.65, hz:.2, ty:.25, g:[1.8, 1.1, .9, .5], active:onBoard },
+  { id:'sysFanHdr', kind:'sysFan', conn:true, name:'разъём SYS_FAN2', x:9.0, z:14.53, py:.25, hx:.5, hz:.2, ty:.25, g:[1.5, 1.0, .8, .45], active:onBoard },
 ];
 const SLOT = Object.fromEntries(SLOTS.map(s => [s.id, s]));
 SLOTS.forEach(s => s.occ = null);
 function target(id, s) {
-  if (id === 'cooler') return new V3(s.x, .64, s.z);
+  if (id === 'cooler' || id === 'paste') return new V3(s.x, .64, s.z);
   return new V3(s.tx ?? s.x, s.ty, s.tz ?? s.z);
 }
 function defaultSlot(id) {
@@ -1870,7 +2168,8 @@ function makeThumbs() {
     ts.add(new THREE.HemisphereLight(0xffffff, 0x223344, .7));
     const dl = new THREE.DirectionalLight(0xffffff, 2); dl.position.set(5, 10, 8); ts.add(dl);
     const cam = new THREE.PerspectiveCamera(28, 300 / 200, .1, 300);
-    const dirs = { board: [.15, 1.6, .9], psu: [.9, 1.3, .9], cpu: [.5, 1.4, 1], cooler: [1.3, .55, 1], ram: [1, .6, .5], ram2: [1, .6, .5], ssd: [.2, 1.5, .8], gpu: [.35, .45, 1], hdd: [.3, 1.4, .8] };
+    const dirs = { board: [.15, 1.6, .9], psu: [.9, 1.3, .9], cpu: [.5, 1.4, 1], paste: [.3, .45, 1], cooler: [1.3, .55, 1], ram:
+ [1, .6, .5], ram2: [1, .6, .5], ssd: [.2, 1.5, .8], gpu: [.35, .45, 1], hdd: [.3, 1.4, .8] };
     const shot = (obj, dir) => {
       const b = new THREE.Box3().setFromObject(obj), c = b.getCenter(new V3()), sz = b.getSize(new V3()).length();
       cam.position.copy(c).addScaledVector(new V3(...dir).normalize(), sz * 1.3); cam.lookAt(c);
@@ -1883,11 +2182,12 @@ function makeThumbs() {
     }
     for (const id of CABLE_ORDER) { // штекер с куском провода
       const spec = CABLE[id], p = new THREE.Group();
-      const pl = plugMesh(spec); p.add(pl);
+      p.add(buildPlug(id));
       const bd = new V3(...spec.back), len = by(spec) ? spec.plug[1] : spec.plug[0];
-      const back = bd.clone().multiplyScalar(len), side = by(spec) ? new V3(1, 0, 0) : new V3(0, 1, 0);
-      const pts = [back, back.clone().addScaledVector(bd, 2), back.clone().addScaledVector(bd, 4).addScaledVector(side, 2), back.clone().addScaledVector(bd, 5).addScaledVector(side, 6)];
-      p.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, spec.r, 8), spec.m));
+      const back = bd.clone().multiplyScalar(len), side = by(spec) ? new V3(spec.ribbon && spec.wdir[0] ? 0 : 1, 0, spec.ribbon && spec.wdir[0] ? 1 : 0) : new V3(0, 1, 0);
+      const k = THREE.MathUtils.clamp(Math.max(spec.plug[0], spec.plug[2]) / 3, .4, 1); // у маленьких штекеров и провод короче
+      const pts = [back.clone().addScaledVector(bd, 5 * k).addScaledVector(side, 6 * k), back.clone().addScaledVector(bd, 4 * k).addScaledVector(side, 2 * k), back.clone().addScaledVector(bd, 2 * k), back];
+      p.add(new THREE.Mesh(cableGeometry(spec, new THREE.CatmullRomCurve3(pts), 40), cableMat(spec)));
       ts.add(p); imgs[id] = shot(p, by(spec) ? [.9, .7, 1.2] : [.4, 1.3, 1]); ts.remove(p);
     }
     pm.dispose(); tr.dispose(); tr.forceContextLoss();
@@ -1927,7 +2227,7 @@ function toast(text, kind = 'info', ms = 6500) {
 }
 const installedCount = () => ORDER.filter(id => I[id].installed).length;
 const missingNeeds = id => I[id].needs.filter(n => !I[n].installed);
-const needText = list => list.map(n => I[n].acc).join(' и ');
+const needText = list => (list.every(n => I[n].verb) ? I[list[0]].verb : 'установите') + ' ' + list.map(n => I[n].acc).join(' и ');
 
 function slotLabel(id) {
   const s = I[id].slot; if (!s) return '';
@@ -1982,7 +2282,7 @@ function renderInfo() {
   } else if (selected.type === 'comp') {
     const id = selected.id, c = I[id], miss = missingNeeds(id);
     const st = c.installed ? `<span class="status ok">${c.cat === 'cable' ? 'Подключено' : 'Установлено · ' + slotLabel(id)}</span>`
-      : miss.length ? `<span class="status wait">Сначала установите ${needText(miss)}</span>`
+      : miss.length ? `<span class="status wait">Сначала ${needText(miss)}</span>`
       : `<span class="status">${c.cat === 'cable' ? 'Не подключено — перетащите штекер к разъёму' : 'На столе — перетащите в корпус'}</span>`;
     h = `<button class="link" type="button" data-back>← Весь корпус</button>
       <div class="kind">${c.kind}</div><h2>${c.name}</h2>${st}<p>${c.desc}</p>
@@ -2055,6 +2355,12 @@ const SPECIAL = {
   'sataData>hddData': 'Этот конец кабеля уже подключён к диску. Второй конец идёт в порт SATA на плате, у её правого края.',
   'hdd>psuBay': 'Это место для блока питания. Жёсткий диск ставится в корзину рядом, ближе к передней стенке.',
   'psu>hddBay': 'Это корзина для дисков. Блок питания ставится у задней стенки, чтобы его разъём выходил наружу.',
+  'cpuFan>sysFan': 'Это SYS_FAN — разъём для вентиляторов корпуса. Вентилятор кулера подключают к CPU_FAN над сокетом: только за ним плата следит при запуске.',
+  'sysFan>cpuFan': 'Это CPU_FAN — разъём для вентилятора кулера. Вентиляторы корпуса подключают к SYS_FAN2 на нижнем краю платы.',
+  'fpanel>hdAudio': 'Это HD_AUDIO — разъём для гнёзд наушников и микрофона. Кабель кнопки питания идёт в F_PANEL — на том же краю платы, справа.',
+  'hdAudio>fpanel': 'Это F_PANEL — разъём кнопки питания и индикаторов. Кабель HD Audio идёт в HD_AUDIO в левом нижнем углу платы, рядом со звуковой микросхемой.',
+  'usb3>usbc': 'Это маленький разъём для переднего USB-C. Широкий штекер USB 3.0 на 19 контактов идёт в разъём USB3_E34 в рамке на нижнем краю платы.',
+  'usbc>usb3': 'Это USB3_E34 для портов USB 3.0. Маленький штекер USB-C идёт в разъём USB_C1 у правого края платы, под ATX 24-pin.',
 };
 function ramTip(id, s) {
   const other = I[id === 'ram' ? 'ram2' : 'ram'];
@@ -2069,6 +2375,7 @@ function evaluate(id, s) {
   if (sp) return bad(sp);
   if (it.kinds.includes(s.kind)) {
     if (id === 'cooler') return I.cooler.installed ? bad('Кулер уже стоит.') : ok();
+    if (id === 'paste') return ok();
     if (s.occ) return bad(`Здесь уже стоит: ${lc(I[s.occ].name)}.`);
     if (id === 'ram' || id === 'ram2') return ok(ramTip(id, s));
     if (id === 'gpu' && !s.primary) return ok('Работать будет, но этот слот подключён к чипсету в режиме x4, и видеокарта потеряет часть скорости. Лучше верхний PCIEX16_1.');
@@ -2087,23 +2394,26 @@ function flash(s, c) { glow[s.id].flashT = performance.now(); glow[s.id].flashC 
 function install(id, slot, from) {
   const it = I[id], mv = it.mover, to = target(id, slot);
   it.installed = true; it.slot = slot; it.busy = true; ledFault = null;
-  if (id !== 'cooler') slot.occ = id;
+  if (id !== 'cooler' && id !== 'paste') slot.occ = id;
   if (id === 'sataData') SLOT.hddData.occ = id;
   const lift = it.cat === 'cable' ? new V3(...it.cable.spec.back).multiplyScalar(6).add(new V3(0, 4, 0)) : new V3(0, 10, 0);
   const start = from ? from.clone() : to.clone().add(lift);
   const above = to.clone().add(it.cat === 'cable' ? new V3(...it.cable.spec.back).multiplyScalar(1.5) : new V3(0, 1.6, 0));
   mv.position.copy(start); it.group.visible = true; it.live = it.cat === 'cable';
+  if (id === 'paste') pasteShown(false);
   tween(from ? 520 : 750, k => {
     if (k < .4) mv.position.lerpVectors(start, above, easeInOut(k / .4));
     else mv.position.lerpVectors(above, to, easeOut((k - .4) / .6));
   }, () => {
     mv.position.copy(to); it.busy = false; it.live = false;
     if (it.cat === 'cable') setTube(it, true);
+    if (id === 'paste' && it.installed) { pasteShown(true); tween(350, k => it.group.userData.drop.scale.set(easeOut(k), .55 * easeOut(k), easeOut(k))); }
     flash(slot, GREEN);
   });
   refreshHints(); updateUI();
 }
-const BLOCKERS = { board:['cpu','ram','ram2','ssd','gpu','atx24','eps','sataData'], cpu:['cooler'], psu:['atx24','eps','gpuPwr','hddPwr'], gpu:['gpuPwr'], hdd:['hddPwr','sataData'] };
+const BLOCKERS = { board:['cpu','ram','ram2','ssd','gpu','atx24','eps','sataData','fpanel','usb3','usbc','hdAudio','sysFan'], cpu:['paste','cooler'], paste:['cooler'], cooler:['cpuFan'],
+  psu:['atx24','eps','gpuPwr','hddPwr'], gpu:['gpuPwr'], hdd:['hddPwr','sataData'] };
 function uninstall(id) {
   const it = I[id];
   if (it.busy) return;
@@ -2115,15 +2425,17 @@ function uninstall(id) {
   it.installed = false; it.slot = null; ledFault = null; it.busy = true;
   const mv = it.mover, from = mv.position.clone();
   const dir = it.cat === 'cable' ? new V3(...it.cable.spec.back).add(new V3(0, .6, 0)).normalize() : new V3(0, 1, 0);
+  const fin = () => { it.busy = false; it.live = false; if (!it.installed) it.group.visible = false; };
   it.live = it.cat === 'cable';
-  tween(420, k => mv.position.copy(from).addScaledVector(dir, easeInOut(k) * 8), () => { it.busy = false; it.live = false; if (!it.installed) it.group.visible = false; });
+  if (id === 'paste') tween(350, k => it.group.userData.drop.scale.setScalar(Math.max(.001, 1 - k)), fin); // каплю стирают салфеткой
+  else tween(420, k => mv.position.copy(from).addScaledVector(dir, easeInOut(k) * 8), fin);
   refreshHints(); updateUI();
 }
 function blockedStart(id) {
   const miss = missingNeeds(id);
   if (!miss.length) return false;
   if (inTest()) { mistake(`${I[id].name} — раньше времени`); toast('Ошибка: эту деталь ставят позже, после других.', 'bad'); return true; }
-  toast(I[id].needMsg && miss.includes('cpu') ? I[id].needMsg : `Сначала установите ${needText(miss)}.`, 'bad');
+  toast(I[id].needMsgs?.[miss[0]] || `Сначала ${needText(miss)}.`, 'bad');
   return true;
 }
 function autoInstall(id) {
@@ -2319,6 +2631,7 @@ async function pressPower() {
   if (inTest() && !complete) mistake(`Включение незавершённой сборки (${installedCount()} из ${ORDER.length})`);
   if (!I.psu.installed) { toast('Кнопка нажата, но ничего не происходит: в корпусе нет блока питания.', 'bad'); return; }
   if (!I.board.installed) { toast('Блок питания есть, но сигнал включения подать некому: материнская плата не установлена.', 'bad'); return; }
+  if (!I.fpanel.installed) { toast('Кнопка на корпусе нажата, но ничего не происходит: она подключается к плате кабелем F_PANEL. Без него плата не узнает, что кнопку нажали.', 'bad'); return; }
   if (!I.atx24.installed) { toast('Тишина: плата не получает питание. Подключите кабель ATX 24-pin от блока питания.', 'bad'); return; }
   busyPower = true; ledFault = null; allLeds(false); spinTarget = 1; updateUI();
   toast('Плата проверяет компоненты. Следите за индикаторами Q-LED в правом верхнем углу платы.', 'info');
@@ -2326,6 +2639,7 @@ async function pressPower() {
     ['cpu', () => I.cpu.installed, 'Плата не нашла процессор — горит индикатор CPU. Без процессора компьютер не запустится.'],
     ['cpu', () => I.eps.installed, 'Процессор не получает питание — горит индикатор CPU. Подключите кабель CPU 8-pin в верхнем левом углу платы.'],
     ['cpu', () => I.cooler.installed, 'Запуск остановлен: плата не видит кулер процессора. Без охлаждения процессор за секунды нагреется до 100 °C и аварийно отключится.'],
+    ['cpu', () => I.cpuFan.installed, 'Запуск остановлен: CPU Fan Error — плата не получает сигнал от вентилятора кулера. Подключите его кабель к разъёму CPU_FAN над сокетом.'],
     ['dram', () => I.ram.installed || I.ram2.installed, 'Нет оперативной памяти — горит индикатор DRAM. Процессору некуда загрузить данные.'],
     ['vga', () => I.gpu.installed, 'Нет видеокарты — горит индикатор VGA. У этого процессора нет встроенной графики, поэтому монитор останется чёрным.'],
     ['vga', () => I.gpuPwr.installed, 'Видеокарта не получает дополнительное питание — горит индикатор VGA. Подключите кабель PCIe 8-pin к её верхнему торцу.'],
@@ -2346,6 +2660,9 @@ async function pressPower() {
   else if (!(I.ram.slot.label[0] !== I.ram2.slot.label[0])) notes.push('Оба модуля памяти в одном канале — переставьте их в A2 и B2.');
   if (I.hdd.installed && !(I.hddPwr.installed && I.sataData.installed)) notes.push('Жёсткий диск не определился: подключите к нему оба кабеля.');
   if (!I.hdd.installed) notes.push('Жёсткий диск не установлен — места для файлов будет меньше.');
+  if (!I.sysFan.installed) notes.push('Вентиляторы корпуса стоят: подключите их к SYS_FAN2, иначе горячий воздух останется внутри.');
+  const front = [!I.usb3.installed && 'USB 3.0', !I.usbc.installed && 'USB-C', !I.hdAudio.installed && 'гнёзда для наушников'].filter(Boolean);
+  if (front.length) notes.push(`Передние разъёмы без кабеля к плате работать не будут: ${front.join(', ')}.`);
   toast(notes.length ? `Компьютер запустился. ${notes.join(' ')}` : 'Сборка прошла самотестирование POST: все компоненты найдены. Следующий шаг — вкладка «Рабочее место»: подключим монитор, клавиатуру и мышь.', notes.length ? 'info' : 'ok', 11000);
   updateUI();
 }
@@ -3472,7 +3789,11 @@ function useCaseModel(model) {
   const partG = id => allParts.find(g => g.userData.part === id);
   const own = o => { if (!o.userData.keep) o.material = o.material.clone(); }; // у деталей со справкой — свой материал для подсветки
   for (const n of ['shroudTop', 'shroudSide']) shroudPart.attach(model.getObjectByName(n));
-  { const t = model.getObjectByName('tray'); partG('tray').attach(t); t.traverse(o => o.isMesh && own(o)); }
+  { const t = model.getObjectByName('tray'); partG('tray').attach(t); t.traverse(o => o.isMesh && own(o));
+    // два горизонтальных выреза справа от платы попадают под люверсы — закрываем их листом того же металла
+    let m = null; t.traverse(o => { if (o.isMesh && !m) m = o.material; });
+    for (const z of [-3.62, .78]) box(5.5, .5, 1.8, m, 16.15, -1.26, z, partG('tray'));
+  }
 
   // заглушки слотов: модель вместо планок из кода; под видеокарту — вторая и третья
   [...slotCoversPart.children].forEach(o => slotCoversPart.remove(o));
@@ -3588,7 +3909,8 @@ renderer.setAnimationLoop(() => {
     G.o.visible = op > .01; G.m.opacity = op; G.m.color.copy(col);
   }
   fanSpeed += (spinTarget - fanSpeed) * Math.min(1, dt * (spinTarget ? 1.2 : .7));
-  if (!REDUCED || powered) for (const r of rotors) if (r.owner !== 'enc' && (r.owner === 'case' || I[r.owner].installed)) r.rotor.rotation.z += fanSpeed * dt * (REDUCED ? 4 : 28);
+  const spins = o => o === 'case' ? I.sysFan.installed : I[o].installed && (o !== 'cooler' || I.cpuFan.installed); // вентиляторам корпуса и кулера нужен свой кабель
+  if (!REDUCED || powered) for (const r of rotors) if (r.owner !== 'enc' && spins(r.owner)) r.rotor.rotation.z += fanSpeed * dt * (REDUCED ? 4 : 28);
   if (powered) { MAT.rgb.emissive.setHSL((t * .07) % 1, .85, .55); MAT.rgb.emissiveIntensity = 1.6 * fanSpeed; }
   else MAT.rgb.emissiveIntensity = 0;
   if (ledFault) setLed(ledFault, Math.floor(t * 2.5) % 2 === 0);
